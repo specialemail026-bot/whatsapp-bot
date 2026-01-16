@@ -111,7 +111,7 @@ async function startSock() {
 ┃ 📱 .short
 ┃ 📸 .instagram
 ┃ ▶️ .ping
-┃ 👤 .contact
+┃ 👤 .developer
 ┃ 📜 .lyrics
 ┃ 📌 .help
 ┃ ✅ .status
@@ -129,8 +129,8 @@ async function startSock() {
       }, { quoted: msg });
     }
 
-    // ===== .contact =====
-    else if (body.startsWith(".contact")) {
+    // ===== .developer =====
+    else if (body.startsWith(".developer")) {
       await sock.sendMessage(chatId, {
         text: "Developed by Webs, Infor Systems student at UNIMA\n📞 099 555 1995\n📩 specialmail033@gmail.com"
       }, { quoted: msg });
@@ -209,7 +209,7 @@ if (!sender || !adminJids.includes(sender)) {
 
   await sock.sendMessage(
     chatId,
-    { text: `✅ Added premium for ${jid} ` },
+    { text: `✅ You have Upgraded ${jid} ` },
     { quoted: msg }
   );
  }

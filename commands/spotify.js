@@ -17,7 +17,7 @@ export async function spotifyCommand(sock, chatId, message) {
 
     if (!checkLimitOrPremium(sender, chatId, "song")) {
         return sock.sendMessage(chatId, {
-            text: "🚫 Daily song download limit reached (2/day).\n\n💎 Upgrade to unlimited downloads by sending K600 only to 099 555 1995 or 088 996 4091 (Edison Chazumbwa)."
+            text: "🚫 Mwakwanitsa mulingo wa nyimbo ziwiri pa tsiku.\n\n💎 Ngat mukufuna muzi downloader mopanda limit moyo wanu onse tumizan K600 yokha bas ku 099 555 1995 or 088 996 4091 (Edison Chazumbwa)."
         }, { quoted: message });
     }
 

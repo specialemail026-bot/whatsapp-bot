@@ -48,7 +48,7 @@ export function checkAndIncrementLimit(senderJid, type) {
     userUsage.videos = 0;
   }
 
-  const limit = type === "song" ? 2 : 1; // Daily limits
+  const limit = type === "song" ? 5 : 3; // Daily limits
   const current = userUsage[type + "s"]; // songs or videos
 
   if (current >= limit) {
