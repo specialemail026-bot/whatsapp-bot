@@ -140,15 +140,15 @@ async function startSock() {
     else if (body.startsWith(".private")) {
       await sock.sendMessage(chatId, {
         text:`
-      Did you know you can use this AI privately in your inbox?
+Did you know you can use this AI privately in your inbox?
 
-      ✅ No group noise
-      ✅ Peaceful & fast
-      ✅ Unlimited downloads
-      ✅ Just you and the AI
+  ✅ No group noise
+  ✅ Peaceful & fast
+  ✅ Unlimited downloads
+  ✅ Just you and the AI
 
-      To own the AI privately, pay K1,000 once and use it forever.
-     📩 Inbox the admin to get started.
+To use the AI privately, pay K1,000 once and use it forever.
+📩 Inbox the admin to get started.
         ` 
         }, { quoted: msg });
     }  
