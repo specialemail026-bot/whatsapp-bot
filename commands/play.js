@@ -22,7 +22,7 @@ export async function playCommand(sock, chatId, msg) {
   if (activeChats.has(chatId)) {
     return sock.sendMessage(
       chatId,
-      { text: "⏳ Dikiran kaye, nyimbo ina iku downloader…" },
+      { text: "⏳ Please wait, another song is being downloaded…" },
       { quoted: msg }
     );
   }
@@ -30,7 +30,7 @@ export async function playCommand(sock, chatId, msg) {
   if (!checkLimitOrPremium(sender, chatId, "song")) {
     return sock.sendMessage(
       chatId,
-      { text: "🚫 You've reached today's limit.\n\n Pay K600 once and use it forever withouts limits.\n\n📲 099 555 1995 or 088 996 4091 (Edison Chazumbwa)." },
+      { text: "🚫 You've reached today's limit.\n\n Pay K600 once and download forever without limits.\n\n📲 099 555 1995 or 088 996 4091 (Edison Chazumbwa)." },
       { quoted: msg }
     );
   }
