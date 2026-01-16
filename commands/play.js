@@ -30,7 +30,7 @@ export async function playCommand(sock, chatId, msg) {
   if (!checkLimitOrPremium(sender, chatId, "song")) {
     return sock.sendMessage(
       chatId,
-      { text: "🚫 Mwakwanitsa mulingo wa nyimbo ziwiri pa tsiku.\n\n💎 Ngat mukufuna muzi downloader mopanda limit moyo wanu onse tumizan K600 yokha bas ku 099 555 1995 or 088 996 4091 (Edison Chazumbwa)." },
+      { text: "🚫 You've reached today's limit.\n\n Pay K600 once and use it forever withouts limits.\n\n📲 099 555 1995 or 088 996 4091 (Edison Chazumbwa)." },
       { quoted: msg }
     );
   }

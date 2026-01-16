@@ -106,16 +106,16 @@ async function startSock() {
       await sock.sendMessage(chatId, {
         text: `
 ┏━━〔 *Webs AI Commands* 〕━━┓
-┃ 🎵 .play
-┃ 🎥 .video
-┃ 📱 .short
-┃ 📸 .instagram
+┃ 🎵 .play (song name)
+┃ 🎥 .video (video title)
+┃ 📱 .short (video link)
+┃ 📸 .instagram (video link)
 ┃ ▶️ .ping
 ┃ 👤 .developer
-┃ 📜 .lyrics
+┃ 📜 .lyrics (song name)
 ┃ 📌 .help
 ┃ ✅ .status
-┃ 👁 .vv
+┃ 🔒 .private
 ┃ 🎧 .spotify
 ┃ 💰 .addpremium (admin command)
 ┗━━━━━━━━━━━━━━━━━━━━━━┛`.trim()
@@ -136,6 +136,23 @@ async function startSock() {
       }, { quoted: msg });
     }
 
+    // ===== .private =====
+    else if (body.startsWith(".private")) {
+      await sock.sendMessage(chatId, {
+        text:`
+      Did you know you can use this AI privately in your inbox?
+
+      ✅ No group noise
+      ✅ Peaceful & fast
+      ✅ Unlimited downloads
+      ✅ Just you and the AI
+
+      To own the AI privately, pay K1,000 once and use it forever.
+     📩 Inbox the admin to get started.
+        ` 
+        }, { quoted: msg });
+    }  
+    
     // ===== .play =====
     else if (body.startsWith(".play")) {
       await playCommand(sock, chatId, msg);
