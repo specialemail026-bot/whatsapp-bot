@@ -116,7 +116,6 @@ async function startSock() {
 ┃ 📌 .help
 ┃ ✅ .status
 ┃ 🔒 .private
-┃ 🎧 .spotify
 ┃ 💰 .addpremium (admin command)
 ┗━━━━━━━━━━━━━━━━━━━━━━┛`.trim()
       }, { quoted: msg });
