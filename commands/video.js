@@ -12,7 +12,7 @@ export async function videoCommand(sock, chatId, msg) {
 
   if (!checkLimitOrPremium(sender, chatId, "video")) {
     return sock.sendMessage(chatId, {
-      text: "🚫 You've reached today's limit.\n\n Pay K600 once and download forever without limits.\n\n📲 099 555 1995 or 088 996 4091 (Edison Chazumbwa)."
+      text: "🚫 You've reached limit.\n\n Pay K1,000 once and download forever without limits.\n\n📲 099 555 1995 or 088 996 4091 (Edison Chazumbwa)."
     }, { quoted: msg });
   }
 

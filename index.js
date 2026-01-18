@@ -110,14 +110,18 @@ async function startSock() {
 ┃ 🎥 .video (video title)
 ┃ 📱 .short (video link)
 ┃ 📸 .instagram (video link)
-┃ ▶️ .ping
+┃ 🔒 .private
 ┃ 👤 .developer
+┃ 💎 .upgrade
 ┃ 📜 .lyrics (song name)
 ┃ 📌 .help
 ┃ ✅ .status
-┃ 🔒 .private
-┃ 💰 .addpremium (admin command)
-┗━━━━━━━━━━━━━━━━━━━━━━┛`.trim()
+┃ ▶️ .ping
+┃ 💰 .addpremium (for admin)
+┗━━━━━━━━━━━━━━━━━━━━━━
+  WEBS AI VERSION 1.0
+┗━━━━━━━━━━━━━━━━━━━━━━
+`.trim()
       }, { quoted: msg });
     }
 
@@ -132,6 +136,13 @@ async function startSock() {
     else if (body.startsWith(".developer")) {
       await sock.sendMessage(chatId, {
         text: "Developed by Webs, Infor Systems student at UNIMA\n📞 099 555 1995\n📩 specialmail033@gmail.com"
+      }, { quoted: msg });
+    }
+
+    // ===== .upgrade =====
+    else if (body.startsWith(".upgrade")) {
+      await sock.sendMessage(chatId, {
+        text: "Are you a free user??\n\n📲 Upgrade by paying K1,000 once and download content without limits.\n\n📲 Contact the developer at 0995551995 / 0889964091 for full info."
       }, { quoted: msg });
     }
 
