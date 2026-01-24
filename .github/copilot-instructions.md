@@ -1,3 +1,57 @@
+# WhatsApp Bot — Copilot Instructions
+
+Purpose: Quickly onboard AI coding agents to the local Baileys-based WhatsApp bot.
+
+Key concepts (why this layout)
+- `index.js` is the single-entry router: Baileys connection, QR auth, message parsing, and a dot-prefixed command switch.
+- `commands/` contains focused command handlers. Each exports an async function `handler(sock, chatId, msg)` and is invoked from `index.js`.
+- `data/` persists runtime state:
+  - `auth_info/` — Baileys session (DO NOT EDIT)
+  - `usage.json` — per-sender daily counters (reset at UTC midnight)
+  - `premium.json` — 30-day premium subscriptions
+- `tmp/` stores transient downloads; handlers must clean up files.
+
+Patterns you must follow (concrete examples)
+- Command trigger: messages starting with `.` (e.g., `.play Despacito`). See `index.js` routing.
+- Handler signature: `async function myCmd(sock, chatId, msg)` (see `commands/play.js`).
+- Extract sender: `const sender = msg.key.participant || msg.key.remoteJid;` — limits are per sender JID.
+- Extract text: `msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption`.
+- Query parsing: `const query = text.split(' ').slice(1).join(' ').trim()`.
+- Rate-limits: call `checkLimitOrPremium(sender, type)` from `commands/premium.js`. Types: `'song'` or `'video'`.
+- Always reply with `{ quoted: msg }` for threading.
+
+Concurrency & file safety (must-follow)
+- Use the repo's `activeChats` lock pattern to avoid duplicate processing per chat (see `commands/play.js`).
+- Wrap downloads and file writes in `try/finally` and remove temp files in `finally` (example in `commands/play.js`).
+- Enforce video size guard (~95 MB) and delete oversize artifacts (see `commands/video.js`).
+
+Rate limits & premium
+- Song commands (`.play`, `.spotify`, `.lyrics`) → 3/day per sender; video commands (`.video`, `.short`, `.instagram`) → 2/day.
+- Premium subscribers in `data/premium.json` bypass limits. Add via `.addpremium <phone|jid>` (admin-only).
+- Admin JIDs are hardcoded and used by `premium.js` — keep `index.js` and `premium.js` in sync for admin control.
+
+Adding a new command (exact steps)
+1. Create `commands/mycmd.js` exporting `async function mycmd(sock, chatId, msg)`.
+2. Import in `index.js` and add a `body.startsWith('.mycmd')` branch that calls your handler with `{ quoted: msg }`.
+3. Follow sender/text extraction and call `checkLimitOrPremium` when applicable.
+
+Running & deploy
+- Local: `npm start` — first-run shows QR in terminal; credentials saved to `data/auth_info/`.
+- Docker: `docker build -t whatsapp-bot .` (Dockerfile includes `yt-dlp`, `ffmpeg`, Python). Use Docker when host lacks binaries.
+
+Important files to inspect
+- `index.js` — router and command wiring
+- `commands/play.js` — audio download + cleanup example
+- `commands/video.js` — video download + size guard
+- `commands/premium.js` / `rateLimit.js` — limit & premium logic
+- `data/usage.json` and `data/premium.json` — runtime state models
+
+Safe edit rules (must follow)
+- Never edit `data/auth_info/`.
+- Always send user-facing replies with `{ quoted: msg }`.
+- Always clean `tmp/` artifacts in `finally` blocks.
+
+If anything here is ambiguous or incomplete, tell me which command or file you want expanded and I will add precise examples.
 # WhatsApp Bot — AI Assistant Instructions
 
 **Purpose**: Help AI agents be immediately productive in this Baileys-based WhatsApp bot. The bot downloads and streams media (songs, videos, reels) on demand, with daily rate limits and optional premium subscriptions.

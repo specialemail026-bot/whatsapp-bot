@@ -10,7 +10,8 @@ import { lyricsCommand } from "./commands/lyrics.js";
 import { videoCommand } from "./commands/video.js";
 import { shortCommand } from "./commands/short.js";
 import { instagramCommand } from "./commands/instagram.js";
-import { spotifyCommand } from "./commands/spotify.js"; 
+import { spotifyCommand } from "./commands/spotify.js";
+import { docCommand } from "./commands/doc.js";
 import { addPremium } from "./commands/premium.js";
 
 import P from "pino";
@@ -31,7 +32,10 @@ const adminJids = ["265995551995@s.whatsapp.net", "265890061520@s.whatsapp.net",
    START SOCKET
    =========================== */
 async function startSock() {
-  const authPath = "/data/auth_info"; // persistent folder on Railway volume
+  // Persistent auth folder — prefer `DATA_DIR` env (used in deployments),
+  // otherwise use project-local `./data` for local development.
+  const DATA_DIR = process.env.DATA_DIR || join(process.cwd(), "data");
+  const authPath = join(DATA_DIR, "auth_info");
   const { state, saveCreds } = await useMultiFileAuthState(authPath);
 
   const { version } = await fetchLatestBaileysVersion();
@@ -84,11 +88,27 @@ async function startSock() {
 
     const chatId = msg.key.remoteJid;
 
-    const body =
+    let body =
       msg.message?.conversation ||
       msg.message?.extendedTextMessage?.text ||
       msg.message?.imageMessage?.caption ||
       "";
+
+    // Normalize command input: trim, remove spaces after the dot, lowercase the command token
+    // Examples handled: ". Play song" -> ".play song", ".PLAY" -> ".play"
+    const raw = body.trim();
+    if (raw.startsWith(".")) {
+      const m = raw.match(/^\.\s*([^\s]+)([\s\S]*)$/);
+      if (m) {
+        const cmd = m[1].toLowerCase();
+        const rest = m[2] || "";
+        body = `.${cmd}${rest}`;
+      } else {
+        body = raw.toLowerCase();
+      }
+    } else {
+      body = raw;
+    }
 
    
     // ===== .ping =====
@@ -112,6 +132,7 @@ async function startSock() {
 ┃ 📸 .instagram (video link)
 ┃ 🔒 .private
 ┃ 👤 .developer
+┃ 📁 .doc (document link)
 ┃ 💎 .upgrade
 ┃ 📜 .lyrics (song name)
 ┃ 📌 .help
@@ -167,6 +188,11 @@ To use the AI privately, pay K1,000 once and use it forever.
     else if (body.startsWith(".play")) {
       await playCommand(sock, chatId, msg);
     }
+
+    // ===== .doc =====
+    else if (body.startsWith(".doc")) {
+        await docCommand(sock, chatId, msg);
+      }
 
     // ===== .lyrics =====
     else if (body.startsWith(".lyrics")) {
