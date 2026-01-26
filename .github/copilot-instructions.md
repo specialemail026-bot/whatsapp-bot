@@ -1,3 +1,51 @@
+# Copilot Instructions — Webs WhatsApp Bot
+
+Purpose: get an AI coding agent productive quickly on this Baileys-based WhatsApp downloader bot.
+
+High-level architecture
+- `index.js`: single-entry router. Handles Baileys socket, QR/auth, and routing for dot-prefixed commands.
+- `commands/`: command handlers. Each exports an async function (e.g. `playCommand`) and is invoked from `index.js`.
+- `data/`: runtime state. `auth_info/` (Baileys creds — DO NOT EDIT), `/data/usage.json` and `/data/premium.json` (created at runtime by the code).
+- `tmp/`: transient files used for downloads. Commands must clean up files.
+
+Key patterns and conventions
+- Command handler signature: `async function <name>(sock, chatId, msg)` — see `commands/play.js` and `commands/video.js`.
+- Sender resolution: use `const sender = msg.key.participant || msg.key.remoteJid;` (groups have `participant`).
+- Text extraction: `msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption`.
+- Always reply with `{ quoted: msg }` for threading and context in responses (used everywhere in `index.js`).
+- Normalize commands: `index.js` lowercases the token after the dot and normalizes spacing (e.g. `. Play` -> `.play`).
+
+Concurrency, temp files, and safety
+- Use per-chat in-memory locks to avoid duplicate work (example: `activeChats` Set in `commands/play.js`).
+- Always create `tmp/` if missing and remove temporary files after sending. Use `try/finally` when possible — see `commands/play.js` for a sample flow.
+- Check file size before sending large videos; `commands/video.js` enforces a ~95MB guard and deletes oversize artifacts.
+
+Rate limits & premium
+- Limits per-sender JID (not per-group): songs = 3/day, videos = 2/day. Enforced via `rateLimit.js` (`checkAndIncrementLimit`).
+- Premium logic in `commands/premium.js` (`isPremium`, `addPremium`, `checkLimitOrPremium`). Premiums stored in `/data/premium.json` and expire after 30 days.
+- Admin JIDs are hard-coded in `index.js` and `commands/premium.js` — keep them in sync when editing.
+
+Dependencies & runtime
+- `yt-dlp` and `ffmpeg` are invoked by command handlers (spawned child processes). Dockerfile bundles `yt-dlp`, `ffmpeg`, and Python for deployments.
+- Local dev: `npm start` runs the app; first run prints a QR for Baileys and saves credentials to `data/auth_info/`.
+
+How to add a new command
+1. Create `commands/mycmd.js` exporting `async function myCmd(sock, chatId, msg)`.
+2. Follow sender/text extraction and call `checkLimitOrPremium(sender, type)` when applicable.
+3. Import and dispatch in `index.js` (add `else if (body.startsWith('.mycmd')) { await myCmd(sock, chatId, msg); }`).
+4. Ensure temp files are created under `tmp/` and removed in `finally` blocks.
+
+Important files to review
+- Router & examples: [index.js](index.js)
+- Audio example (locks + cleanup): [commands/play.js](commands/play.js)
+- Video example (size guard): [commands/video.js](commands/video.js)
+- Rate-limiting: [rateLimit.js](rateLimit.js)
+- Premium handling: [commands/premium.js](commands/premium.js)
+
+Do NOT edit
+- `data/auth_info/` (Baileys session files). Manual edits break auth.
+
+If anything here is unclear or you'd like me to add automated tests or CI steps, tell me which area to expand.
 # WhatsApp Bot — Copilot Instructions
 
 Purpose: Quickly onboard AI coding agents to the local Baileys-based WhatsApp bot.

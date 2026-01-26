@@ -2,8 +2,9 @@ import fs from "fs";
 import path from "path";
 import { checkAndIncrementLimit } from "../rateLimit.js";
 
-const PREMIUM_FILE = "/data/premium.json";
-const DATA_DIR = "/data";
+// Resolve data directory consistently with index.js: prefer env, then host /data, then repo-local
+const DATA_DIR = process.env.DATA_DIR || (fs.existsSync("/data") ? "/data" : path.join(process.cwd(), "data"));
+const PREMIUM_FILE = path.join(DATA_DIR, "premium.json");
 // This array must match the one in index.js
 const adminJids = [
   "265995551995@s.whatsapp.net",

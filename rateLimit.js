@@ -1,8 +1,9 @@
 import fs from "fs";
 import path from "path";
 
-const USAGE_FILE = "/data/usage.json";
-const DATA_DIR = "/data";
+// Resolve data directory the same way as index.js and premium.js
+const DATA_DIR = process.env.DATA_DIR || (fs.existsSync("/data") ? "/data" : path.join(process.cwd(), "data"));
+const USAGE_FILE = path.join(DATA_DIR, "usage.json");
 
 function getToday() {
   return new Date().toISOString().split("T")[0]; // YYYY-MM-DD

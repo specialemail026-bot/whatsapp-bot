@@ -33,8 +33,9 @@ const adminJids = ["265995551995@s.whatsapp.net", "265890061520@s.whatsapp.net",
    =========================== */
 async function startSock() {
   // Persistent auth folder — prefer `DATA_DIR` env (used in deployments),
-  // otherwise use project-local `./data` for local development.
-  const DATA_DIR = process.env.DATA_DIR || join(process.cwd(), "data");
+  // otherwise prefer host-mounted `/data` if present, then fall back to
+  // project-local `./data` for local development.
+  const DATA_DIR = process.env.DATA_DIR || (fs.existsSync("/data") ? "/data" : join(process.cwd(), "data"));
   const authPath = join(DATA_DIR, "auth_info");
   const { state, saveCreds } = await useMultiFileAuthState(authPath);
 
