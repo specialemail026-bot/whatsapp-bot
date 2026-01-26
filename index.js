@@ -37,6 +37,18 @@ async function startSock() {
   // project-local `./data` for local development.
   const DATA_DIR = process.env.DATA_DIR || (fs.existsSync("/data") ? "/data" : join(process.cwd(), "data"));
   const authPath = join(DATA_DIR, "auth_info");
+  console.log("🔧 Resolved DATA_DIR:", DATA_DIR);
+  console.log("🔧 Resolved auth path:", authPath);
+  try {
+    if (fs.existsSync(authPath)) {
+      console.log("📂 existing auth_info files:", fs.readdirSync(authPath));
+    } else {
+      console.log("📂 auth_info directory does not exist yet (will be created by Baileys)");
+    }
+  } catch (e) {
+    console.error("Error listing auth_path contents:", e);
+  }
+
   const { state, saveCreds } = await useMultiFileAuthState(authPath);
 
   const { version } = await fetchLatestBaileysVersion();
@@ -48,7 +60,17 @@ async function startSock() {
     printQRInTerminal: false
   });
 
-  sock.ev.on("creds.update", saveCreds);
+  sock.ev.on("creds.update", async () => {
+    try {
+      console.log("💾 creds.update event — saving credentials to auth_path");
+      await saveCreds();
+      if (fs.existsSync(authPath)) {
+        console.log("📂 auth_info files after save:", fs.readdirSync(authPath));
+      }
+    } catch (e) {
+      console.error("Error saving creds:", e);
+    }
+  });
 
   /* ===========================
      CONNECTION HANDLER
