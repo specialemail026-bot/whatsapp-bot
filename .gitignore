@@ -1,5 +1,5 @@
 node_modules/
 tmp/
-data/auth_info/
+data/
 .env
 cookies.txt

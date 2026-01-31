@@ -31,7 +31,7 @@ export async function shortCommand(sock, chatId, msg) {
   
   console.log("📥 SHORT command - Sender JID:", sender);
 
-  if (!checkLimitOrPremium(sender, chatId, "video")) {
+  if (!checkLimitOrPremium(sender, "video")) {
     return sock.sendMessage(chatId, {
       text: "🚫 You've reached limit.\n\n Pay K1,000 once and download forever without limits.\n\n📲 099 555 1995 or 088 996 4091 (Edison Chazumbwa)."
     }, { quoted: msg });
@@ -67,40 +67,66 @@ export async function shortCommand(sock, chatId, msg) {
       "-f", format,
       "--merge-output-format", "mp4",
       "--ffmpeg-location", ffmpegPath,
-      "--quiet",
+      "--user-agent",
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "--add-header",
+      "Accept-Language:en-US,en;q=0.9",
+      "--extractor-args",
+      "youtube:player_client=web",
+      "--socket-timeout", "30",
+      "--retries", "5",
+      "--fragment-retries", "5",
       "-o", filePath,
       url
     ];
 
     const ytdlp = spawn("yt-dlp", args);
 
+    ytdlp.stderr.on("data", (data) => {
+      console.error("yt-dlp stderr:", data.toString());
+    });
+
     ytdlp.on("error", (err) => {
       console.error("SHORT yt-dlp spawn error:", err);
+      sock.sendMessage(chatId, {
+        text: `❌ Failed to download ${platform} short: ${err.message}`
+      }, { quoted: msg }).catch(e => console.error("Error sending message:", e));
     });
 
     ytdlp.on("close", async (code) => {
+      if (code !== 0) {
+        console.error("yt-dlp exited with code:", code);
+      }
+      
       if (code !== 0 || !fs.existsSync(filePath)) {
         return sock.sendMessage(chatId, {
           text: `❌ Failed to download ${platform} short.`
         }, { quoted: msg });
       }
 
-      const stats = fs.statSync(filePath);
-      if (stats.size > 95 * 1024 * 1024) {
+      try {
+        const stats = fs.statSync(filePath);
+        if (stats.size > 95 * 1024 * 1024) {
+          fs.unlinkSync(filePath);
+          return sock.sendMessage(chatId, {
+            text: "⚠️ Video too large for WhatsApp."
+          }, { quoted: msg });
+        }
+
+        await sock.sendMessage(chatId, {
+          video: fs.readFileSync(filePath),
+          mimetype: "video/mp4",
+          caption: `📱 ${platform.toUpperCase()} short`
+        }, { quoted: msg });
+
         fs.unlinkSync(filePath);
-        return sock.sendMessage(chatId, {
-          text: "⚠️ Video too large for WhatsApp."
+      } catch (err) {
+        console.error("Error sending short video:", err);
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        await sock.sendMessage(chatId, {
+          text: "❌ Failed to send video."
         }, { quoted: msg });
       }
-
-      await sock.sendMessage(chatId, {
-        document: fs.readFileSync(filePath),
-        mimetype: "video/mp4",
-        fileName: `${safeName}.mp4`,
-        caption: `📱 ${platform.toUpperCase()} short`
-      }, { quoted: msg });
-
-      fs.unlinkSync(filePath);
     });
 
   } catch (e) {

@@ -6,6 +6,7 @@ import makeWASocket, {
 } from "@whiskeysockets/baileys";
 
 import { playCommand } from "./commands/play.js";
+import  songCommand from "./commands/song.js";
 import { lyricsCommand } from "./commands/lyrics.js";
 import { videoCommand } from "./commands/video.js";
 import { shortCommand } from "./commands/short.js";
@@ -154,6 +155,7 @@ async function startSock() {
 ┃ 📱 .short (video link)
 ┃ 📸 .instagram (video link)
 ┃ 🔒 .private
+┃ 🎧 .song (song name)
 ┃ 👤 .developer
 ┃ 📁 .doc (document link)
 ┃ 💎 .upgrade
@@ -209,7 +211,8 @@ To use the AI privately, pay K1,000 once and use it forever.
     
     // ===== .play =====
     else if (body.startsWith(".play")) {
-      await playCommand(sock, chatId, msg);
+      const args = body.split(" ").slice(1);
+      await playCommand.execute(sock, msg, args);
     }
 
     // ===== .doc =====
@@ -231,6 +234,12 @@ To use the AI privately, pay K1,000 once and use it forever.
     else if (body.startsWith(".short")) {
         await shortCommand(sock, chatId, msg);
       }
+
+    // ===== .song =====
+    else if (body.startsWith(".song")) {
+      const args = body.split(" ").slice(1);
+      await songCommand.execute(sock, msg, args);
+    }
 
     // ===== .instagram =====
     else if (body.startsWith(".instagram")) {

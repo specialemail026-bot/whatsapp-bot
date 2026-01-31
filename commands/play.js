@@ -1,8 +1,6 @@
-import yts from "yt-search";
+import axios from "axios";
 import fs from "fs";
 import path from "path";
-import { spawn } from "child_process";
-import ffmpegPath from "ffmpeg-static";
 import { checkLimitOrPremium } from "./premium.js";
 
 // ===== simple in-memory locks =====
@@ -14,7 +12,8 @@ if (!fs.existsSync(TMP_DIR)) {
   fs.mkdirSync(TMP_DIR);
 }
 
-export async function playCommand(sock, chatId, msg) {
+async function execute(sock, msg, args) {
+  const chatId = msg.key.remoteJid;
   const sender = msg.key.participant || msg.key.remoteJid;
   
   console.log("📥 PLAY command - Sender JID:", sender);
@@ -53,8 +52,10 @@ export async function playCommand(sock, chatId, msg) {
       );
     }
 
-    const search = await yts(query);
-    if (!search.videos.length) {
+    const searchUrl = `https://ef-prime-md-ultra-apis.vercel.app/search/ytsearch?query=${encodeURIComponent(query)}`;
+    const searchResponse = await axios.get(searchUrl);
+
+    if (!searchResponse.data.answer.success || !searchResponse.data.answer.videos.length) {
       activeChats.delete(chatId);
       return sock.sendMessage(
         chatId,
@@ -63,7 +64,7 @@ export async function playCommand(sock, chatId, msg) {
       );
     }
 
-    const video = search.videos[0];
+    const video = searchResponse.data.answer.videos[0];
     const safeTitle = video.title.replace(/[^\w\s.-]/g, "");
     const filePath = path.join(TMP_DIR, `${Date.now()}.mp3`);
 
@@ -73,49 +74,36 @@ export async function playCommand(sock, chatId, msg) {
       { quoted: msg }
     );
 
-    const args = [
-      "-x",
-      "--audio-format",
-      "mp3",
-      "--ffmpeg-location",
-      ffmpegPath,
-      "--quiet",
-      "-o",
-      filePath,
-      video.url
-    ];
+    const downloadUrl = `https://ef-prime-md-ultra-apis.vercel.app/downloader/ytdl?url=${encodeURIComponent(video.url)}&format=mp3`;
+    const downloadResponse = await axios.get(downloadUrl);
 
-    const ytdlp = spawn("yt-dlp", args);
-
-    ytdlp.on("error", (err) => {
-      console.error("yt-dlp spawn error:", err);
-    });
-
-    ytdlp.on("close", async (code) => {
-      if (code !== 0 || !fs.existsSync(filePath)) {
-        activeChats.delete(chatId);
-        return sock.sendMessage(
-          chatId,
-          { text: "❌ Download failed. Try again later." },
-          { quoted: msg }
-        );
-      }
-
-      const buffer = fs.readFileSync(filePath);
-
-      await sock.sendMessage(
+    if (!downloadResponse.data.answer.success) {
+      activeChats.delete(chatId);
+      return sock.sendMessage(
         chatId,
-        {
-          document: buffer,
-          mimetype: "audio/mpeg",
-          fileName: `${safeTitle}.mp3`
-        },
+        { text: "❌ Download failed. Try again later." },
         { quoted: msg }
       );
+    }
 
-      fs.unlinkSync(filePath);
-      activeChats.delete(chatId);
-    });
+    const audioUrl = downloadResponse.data.answer.downloadUrl;
+    const audioResponse = await axios.get(audioUrl, { responseType: 'arraybuffer' });
+    const buffer = Buffer.from(audioResponse.data);
+
+    fs.writeFileSync(filePath, buffer);
+
+    await sock.sendMessage(
+      chatId,
+      {
+        document: buffer,
+        mimetype: "audio/mpeg",
+        fileName: `${safeTitle}.mp3`
+      },
+      { quoted: msg }
+    );
+
+    fs.unlinkSync(filePath);
+    activeChats.delete(chatId);
 
   } catch (err) {
     console.error("PLAY ERROR:", err);
@@ -128,3 +116,5 @@ export async function playCommand(sock, chatId, msg) {
     );
   }
 }
+
+export const playCommand = { execute };
