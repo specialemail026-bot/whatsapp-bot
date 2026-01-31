@@ -95,7 +95,17 @@ async function startSock() {
     if (connection === "close") {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       if (statusCode === DisconnectReason.loggedOut) {
-        console.log("❌ Logged out. Delete auth_info and restart deployment.");
+        console.log("❌ Logged out. Auto-clearing auth_info and restarting...");
+        try {
+          const files = fs.readdirSync(authPath);
+          for (const file of files) {
+            fs.unlinkSync(join(authPath, file));
+          }
+          console.log("✅ Auth files cleared. Restarting connection...");
+        } catch (e) {
+          console.error("Error clearing auth:", e);
+        }
+        setTimeout(() => startSock(), 2000);
       } else {
         console.log("⚠ Connection lost. Reconnecting...");
         startSock();
