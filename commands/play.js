@@ -16,7 +16,7 @@ async function execute(sock, msg, args) {
   const chatId = msg.key.remoteJid;
   const sender = msg.key.participant || msg.key.remoteJid;
   
-  console.log("📥 PLAY command - Sender JID:", sender);
+  console.log("📥 Play command - Sender JID:", sender);
 
   if (activeChats.has(chatId)) {
     return sock.sendMessage(
@@ -74,19 +74,19 @@ async function execute(sock, msg, args) {
       { quoted: msg }
     );
 
-    const downloadUrl = `https://ef-prime-md-ultra-apis.vercel.app/downloader/ytdl?url=${encodeURIComponent(video.url)}&format=mp3`;
+    const downloadUrl = `https://ef-prime-md-ultra-apis.vercel.app/downloader/ytdlv2?url=${encodeURIComponent(video.url)}&format=audio`;
     const downloadResponse = await axios.get(downloadUrl);
 
-    if (!downloadResponse.data.answer.success) {
+    if (!downloadResponse.data.answer.status) {
       activeChats.delete(chatId);
       return sock.sendMessage(
         chatId,
-        { text: "❌ Download failed. Try again later." },
+        { text: "❌ Download failed. Try again." },
         { quoted: msg }
       );
     }
 
-    const audioUrl = downloadResponse.data.answer.downloadUrl;
+    const audioUrl = downloadResponse.data.answer.audio_url;
     const audioResponse = await axios.get(audioUrl, { responseType: 'arraybuffer' });
     const buffer = Buffer.from(audioResponse.data);
 
@@ -111,7 +111,7 @@ async function execute(sock, msg, args) {
 
     await sock.sendMessage(
       chatId,
-      { text: "❌ Unexpected error occurred." },
+      { text: "❌ Try again please." },
       { quoted: msg }
     );
   }

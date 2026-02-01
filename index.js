@@ -5,9 +5,8 @@ import makeWASocket, {
   downloadMediaMessage
 } from "@whiskeysockets/baileys";
 
-import playdCommand from "./commands/playd.js";
 import { playCommand } from "./commands/play.js";
-import  { songCommand } from "./commands/song.js";
+import songCommand from "./commands/song.js";
 import { lyricsCommand } from "./commands/lyrics.js";
 import { videoCommand } from "./commands/video.js";
 import { shortCommand } from "./commands/short.js";
@@ -220,12 +219,6 @@ To use the AI privately, pay K1,000 once and use it forever.
         ` 
         }, { quoted: msg });
     }  
-    
-    // ===== .playd =====
-    else if (body.startsWith(".playd")) {
-      const args = body.split(" ").slice(1);
-      await playdCommand.execute(sock, msg, args);
-    }
 
     // ===== .play =====
     else if (body.startsWith(".play")) {

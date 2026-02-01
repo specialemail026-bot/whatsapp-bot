@@ -49,7 +49,7 @@ export default {
       const audioBuffer = Buffer.concat(chunks);
 
       await sock.sendMessage(from, {
-        audio: audioBuffer,
+        document: audioBuffer,
         mimetype: "audio/mpeg",
         fileName: `${video.title}.mp3`,
         contextInfo: {
@@ -66,7 +66,7 @@ export default {
 
     } catch (error) {
       console.error("Critical song Error:", error);
-      await sock.sendMessage(from, { text: "❌ Local download failed. Make sure 'yt-dlp' is installed on your server." });
+      await sock.sendMessage(from, { text: "❌Download failed. Try again." });
     }
   },
 };
