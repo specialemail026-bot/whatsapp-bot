@@ -5,14 +5,16 @@ import makeWASocket, {
   downloadMediaMessage
 } from "@whiskeysockets/baileys";
 
+import playdCommand from "./commands/playd.js";
 import { playCommand } from "./commands/play.js";
-import  songCommand from "./commands/song.js";
+import  { songCommand } from "./commands/song.js";
 import { lyricsCommand } from "./commands/lyrics.js";
 import { videoCommand } from "./commands/video.js";
 import { shortCommand } from "./commands/short.js";
 import { instagramCommand } from "./commands/instagram.js";
 import { spotifyCommand } from "./commands/spotify.js";
 import { docCommand } from "./commands/doc.js";
+import { downloadCommand } from "./commands/download.js";
 import { addPremium } from "./commands/premium.js";
 
 import P from "pino";
@@ -219,6 +221,12 @@ To use the AI privately, pay K1,000 once and use it forever.
         }, { quoted: msg });
     }  
     
+    // ===== .playd =====
+    else if (body.startsWith(".playd")) {
+      const args = body.split(" ").slice(1);
+      await playdCommand.execute(sock, msg, args);
+    }
+
     // ===== .play =====
     else if (body.startsWith(".play")) {
       const args = body.split(" ").slice(1);
@@ -240,6 +248,10 @@ To use the AI privately, pay K1,000 once and use it forever.
         await videoCommand(sock, chatId, msg);
       }
       
+    // ===== .download =====
+    else if (body.startsWith(".download")) {
+      await downloadCommand(sock, chatId, msg);
+    }
     // ===== .short =====
     else if (body.startsWith(".short")) {
         await shortCommand(sock, chatId, msg);
