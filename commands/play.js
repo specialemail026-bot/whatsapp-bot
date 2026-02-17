@@ -92,11 +92,13 @@ async function execute(sock, msg, args) {
 
     fs.writeFileSync(filePath, buffer);
 
+    // Send as doc message instead of document
     await sock.sendMessage(
       chatId,
       {
         document: buffer,
-        mimetype: "audio/mpeg",
+        mimetype: "audio/mp4",
+        ptt: false, // set to true for voice note style
         fileName: `${safeTitle}.mp3`
       },
       { quoted: msg }

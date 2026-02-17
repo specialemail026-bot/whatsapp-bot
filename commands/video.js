@@ -1,8 +1,7 @@
 import yts from "yt-search";
 import fs from "fs";
-import { spawn } from "child_process";
 import path from "path";
-import ffmpegPath from "ffmpeg-static";
+import axios from "axios";
 import { checkLimitOrPremium } from "./premium.js";
 
 export async function videoCommand(sock, chatId, msg) {
@@ -48,79 +47,91 @@ export async function videoCommand(sock, chatId, msg) {
       text: `🎬 Downloading video:\n*${video.title}*\n⏱️ Duration: ${video.duration?.timestamp || 'Unknown'}\n👀 Views: ${video.views?.toLocaleString() || 'Unknown'}\n\n⏳ Please wait...`
     }, { quoted: msg });
 
-    // yt-dlp args (WhatsApp-safe resolution)
-    const args = [
-      "-f", "bv*[height<=480]+ba/best[height<=480]",
-      "--merge-output-format", "mp4",
-      "--ffmpeg-location", ffmpegPath,
-      "--user-agent",
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      "--add-header",
-      "Accept-Language:en-US,en;q=0.9",
-      "--extractor-args",
-      "youtube:player_client=web",
-      "--socket-timeout", "30",
-      "--retries", "5",
-      "--fragment-retries", "5",
-      "-o", filePath,
-      video.url
-    ];
+    // Build API URL with the video URL
+    const encodedUrl = encodeURIComponent(video.url);
+    const apiUrl = `https://ef-prime-md-ultra-apis.vercel.app/downloader/ytdlv2?url=${encodedUrl}&format=video`;
 
-    const ytdlp = spawn("yt-dlp", args);
+    console.log("🔗 Fetching video info from API:", apiUrl);
 
-    ytdlp.stderr.on("data", (data) => {
-      console.error("yt-dlp stderr:", data.toString());
+    // Fetch video download URLs from API
+    const apiResponse = await axios.get(apiUrl, {
+      timeout: 60000 // 60 second timeout
     });
 
-    ytdlp.on("error", (err) => {
-      console.error("VIDEO yt-dlp spawn error:", err);
-      sock.sendMessage(chatId, {
-        text: "❌ Video download failed: " + err.message
-      }, { quoted: msg }).catch(e => console.error("Error sending message:", e));
+    if (!apiResponse.data?.answer?.status) {
+      return sock.sendMessage(chatId, {
+        text: "❌ Failed to fetch video download link."
+      }, { quoted: msg });
+    }
+
+    const videoData = apiResponse.data.answer;
+    
+    // Prefer HD, fallback to regular video_url
+    const downloadUrl = videoData.video_url_hd !== "No SD video URL available" 
+      ? videoData.video_url_hd 
+      : videoData.video_url;
+
+    if (!downloadUrl) {
+      return sock.sendMessage(chatId, {
+        text: "❌ No video download URL available."
+      }, { quoted: msg });
+    }
+
+    console.log("⬇️ Downloading video from:", downloadUrl);
+
+    // Download the video file
+    const videoResponse = await axios({
+      method: 'get',
+      url: downloadUrl,
+      responseType: 'stream',
+      timeout: 120000, // 2 minute timeout for download
+      maxContentLength: 100 * 1024 * 1024, // 100MB limit
+      maxBodyLength: 100 * 1024 * 1024
     });
 
-    ytdlp.on("close", async (code) => {
-      if (code !== 0) {
-        console.error("yt-dlp exited with code:", code);
-      }
-      
-      if (code !== 0 || !fs.existsSync(filePath)) {
-        return sock.sendMessage(chatId, {
-          text: "❌ Video download failed."
-        }, { quoted: msg });
-      }
+    const writer = fs.createWriteStream(filePath);
+    videoResponse.data.pipe(writer);
 
-      try {
-        const stats = fs.statSync(filePath);
-
-        // WhatsApp limit guard (~100MB)
-        if (stats.size > 95 * 1024 * 1024) {
-          fs.unlinkSync(filePath);
-          return sock.sendMessage(chatId, {
-            text: "⚠️ Video too large for WhatsApp.\nTry a shorter video."
-          }, { quoted: msg });
-        }
-
-        await sock.sendMessage(chatId, {
-          video: fs.readFileSync(filePath),
-          mimetype: "video/mp4",
-          caption: `🎬 ${video.title}`
-        }, { quoted: msg });
-
-        fs.unlinkSync(filePath);
-      } catch (err) {
-        console.error("Error sending video:", err);
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-        await sock.sendMessage(chatId, {
-          text: "❌ Failed to send video file."
-        }, { quoted: msg });
-      }
+    await new Promise((resolve, reject) => {
+      writer.on('finish', resolve);
+      writer.on('error', reject);
     });
+
+    const stats = fs.statSync(filePath);
+
+    // WhatsApp limit guard (~100MB)
+    if (stats.size > 95 * 1024 * 1024) {
+      fs.unlinkSync(filePath);
+      return sock.sendMessage(chatId, {
+        text: "⚠️ Video too large for WhatsApp.\nTry a shorter video."
+      }, { quoted: msg });
+    }
+
+    console.log("✅ Video downloaded successfully, size:", stats.size);
+
+    // Send as document instead of video
+    await sock.sendMessage(chatId, {
+      document: fs.readFileSync(filePath),
+      mimetype: "video/mp4",
+      fileName: `${videoData.title || video.title}.mp4`,
+      caption: `🎬 ${videoData.title || video.title}`
+    }, { quoted: msg });
+
+    fs.unlinkSync(filePath);
 
   } catch (e) {
     console.error("VIDEO ERROR:", e);
+    
+    // Specific error messages
+    let errorMsg = "❌ Unexpected error occurred.";
+    if (e.code === 'ECONNABORTED' || e.code === 'ETIMEDOUT') {
+      errorMsg = "Download timeout. The video might be too large or the server is slow.";
+    } else if (e.response?.status) {
+      errorMsg = `❌ API Error: ${e.response.status} - ${e.response.statusText}`;
+    }
+    
     await sock.sendMessage(chatId, {
-      text: "❌ Unexpected error occurred."
+      text: errorMsg
     }, { quoted: msg });
   }
 }

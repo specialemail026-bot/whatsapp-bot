@@ -53,55 +53,54 @@ export async function lyricsCommand(sock, chatId, msg) {
       text: `📄 Fetching lyrics for:\n*${song}* — ${artist}`
     }, { quoted: msg });
 
-    // Try multiple lyrics APIs for better reliability
-    let lyrics = null;
+    // Use the correct API endpoint
+    const apiUrl = `https://ef-prime-md-ultra-apis.vercel.app/search/lyrics?artist=${encodeURIComponent(artist)}&song=${encodeURIComponent(song)}`;
     
-    // Try lyrics.ovh first
-    try {
-      const res = await axios.get(
-        `https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(song)}`,
-        { timeout: 5000 }
-      );
-      lyrics = res.data?.lyrics;
-    } catch (e) {
-      console.log("lyrics.ovh failed, trying alternative...");
-    }
+    console.log("🔗 Fetching lyrics from:", apiUrl);
 
-    // Fallback to genius (simple scrape)
-    if (!lyrics) {
-      try {
-        const geniusRes = await axios.get(
-          `https://api.genius.com/search?q=${encodeURIComponent(song)} ${encodeURIComponent(artist)}`,
-          { timeout: 5000 }
-        );
-        if (geniusRes.data?.response?.hits?.[0]) {
-          const hit = geniusRes.data.response.hits[0];
-          lyrics = `🎵 ${hit.result.title} by ${hit.result.primary_artist.name}\n\n📖 Full lyrics available at: ${hit.result.url}`;
-        }
-      } catch (e) {
-        console.log("Genius fallback failed");
-      }
-    }
+    const response = await axios.get(apiUrl, { timeout: 10000 });
 
-    if (!lyrics) {
+    if (!response.data?.answer) {
       return sock.sendMessage(chatId, {
         text: "❌ Lyrics not found. The song may be too new or rare."
       }, { quoted: msg });
     }
 
-    // WhatsApp message length safety
-    const trimmedLyrics = lyrics.length > 3500
-      ? lyrics.substring(0, 3500) + "\n\n…(truncated)"
-      : lyrics;
+    const lyrics = response.data.answer;
 
+    // Clean up the lyrics if it has the header "Paroles de la chanson..."
+    let cleanedLyrics = lyrics;
+    
+    // Remove French header if present
+    if (lyrics.includes("Paroles de la chanson")) {
+      const lines = lyrics.split("\n");
+      // Skip first line if it's the header
+      cleanedLyrics = lines.slice(1).join("\n").trim();
+    }
+
+    // WhatsApp message length safety (max ~4096 chars, but we'll use 3400 to leave room for footer)
+    const trimmedLyrics = cleanedLyrics.length > 3400
+      ? cleanedLyrics.substring(0, 3400) + "\n\n…(truncated)"
+      : cleanedLyrics;
+
+    // Add footer
+    const finalMessage = `📄 *Lyrics: ${song} - ${artist}*\n\n${trimmedLyrics}\n\n━━━━━━━━\nPowered by FRANKKAUMBADEV`;
     await sock.sendMessage(chatId, {
-      text: `📄 *Lyrics for: ${song} - ${artist}*\n\n${trimmedLyrics}`
+      text: finalMessage
     }, { quoted: msg });
 
   } catch (err) {
     console.error("LYRICS ERROR:", err.message);
+    
+    let errorMsg = "❌ Failed to fetch lyrics. Try another song.";
+    if (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT') {
+      errorMsg = "❌ Request timeout. Please try again.";
+    } else if (err.response?.status === 404) {
+      errorMsg = "❌ Lyrics not found for this song.";
+    }
+    
     await sock.sendMessage(chatId, {
-      text: "❌ Failed to fetch lyrics. Try another song."
+      text: errorMsg
     }, { quoted: msg });
   }
 }
