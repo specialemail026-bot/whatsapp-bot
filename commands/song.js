@@ -52,7 +52,7 @@ export default {
         document: audioBuffer,
         mimetype: "audio/mpeg",
         fileName: `${video.title}.mp3`,
-        contextInfo: {
+        /*contextInfo: {
           externalAdReply: {
             title: video.title,
             body: `NexOra Engine`,
@@ -61,7 +61,7 @@ export default {
             mediaUrl: video.url,
             sourceUrl: video.url
           }
-        }
+        }*/
       }, { quoted: msg });
 
     } catch (error) {
