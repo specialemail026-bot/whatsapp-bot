@@ -17,7 +17,7 @@ export default {
       const video = search.videos[0];
       if (!video) return sock.sendMessage(from, { text: "❌ Song not found." });
 
-      await sock.sendMessage(from, { text: `🎧Found: ${video.title}\n⏳ Downloading audio...` }, { quoted: msg });
+      await sock.sendMessage(from, {  text: `⏳ Downloading: *${video.title}*\n⏱️ Duration: ${video.duration?.timestamp || 'Unknown'}\n👀 Views: ${video.views?.toLocaleString() || 'Unknown'}` }, { quoted: msg });
 
       // 1. Spawn yt-dlp (Must be installed on your system/VPS)
       const ytDlpProcess = spawn('yt-dlp', [
