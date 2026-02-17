@@ -56,7 +56,7 @@ export default {
           externalAdReply: {
             title: video.title,
             body: `NexOra Engine`,
-            thumbnailUrl: video.thumbnail,
+            //thumbnailUrl: video.thumbnail,
             mediaType: 2,
             mediaUrl: video.url,
             sourceUrl: video.url

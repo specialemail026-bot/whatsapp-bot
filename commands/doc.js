@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import axios from "axios";
-import { isPremium } from "./premium.js";
+//import { isPremium } from "./premium.js";
 
 const TMP_DIR = "tmp";
 const MAX_SIZE = 100 * 1024 * 1024; // 100MB WhatsApp limit
@@ -42,7 +42,7 @@ export async function docCommand(sock, chatId, msg) {
   const sender = msg.key.participant || msg.key.remoteJid;
 
   // 🔒 Premium check
-  if (!isPremium(sender)) {
+  /*if (!isPremium(sender)) {
     return sock.sendMessage(
       chatId,
       {
@@ -53,7 +53,7 @@ export async function docCommand(sock, chatId, msg) {
       },
       { quoted: msg }
     );
-  }
+  }*/
 
   const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || "";
   const url = text.split(" ").slice(1).join(" ").trim();

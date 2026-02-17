@@ -7,9 +7,8 @@ const DATA_DIR = process.env.DATA_DIR || (fs.existsSync("/data") ? "/data" : pat
 const PREMIUM_FILE = path.join(DATA_DIR, "premium.json");
 // This array must match the one in index.js
 const adminJids = [
-  "265995551995@s.whatsapp.net",
-  "265890061520@s.whatsapp.net",
-  "192380812664956@lid"
+  "192380812664956@lid",
+  "261216018649199@lid"
 ];
 
 function loadPremium() {
@@ -58,7 +57,7 @@ export function isPremium(jid) {
 export function addPremium(jid) {
   const premium = loadPremium();
   const addedAt = Date.now();
-  const expiresAt = addedAt + 30 * 24 * 60 * 60 * 1000; // 30 days
+  const expiresAt = addedAt + 90 * 24 * 60 * 60 * 1000; // 30 days
   premium[jid] = { addedAt, expiresAt };
   savePremium(premium);
   console.log("💎 Premium added for:", jid, "- Expires:", new Date(expiresAt).toISOString());
