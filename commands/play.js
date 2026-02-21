@@ -1,6 +1,8 @@
 import axios from "axios";
 import fs from "fs";
 import path from "path";
+import { spawn } from "child_process";
+import ffmpegPath from "ffmpeg-static";
 import { checkLimitOrPremium } from "./premium.js";
 
 // ===== simple in-memory locks =====
@@ -66,7 +68,8 @@ async function execute(sock, msg, args) {
 
     const video = searchResponse.data.answer.videos[0];
     const safeTitle = video.title.replace(/[^\w\s.-]/g, "");
-    const filePath = path.join(TMP_DIR, `${Date.now()}.mp3`);
+    const inputPath = path.join(TMP_DIR, `${Date.now()}-input`);
+    const outputPath = path.join(TMP_DIR, `${Date.now()}-${safeTitle}.mp3`);
 
     await sock.sendMessage(
       chatId,
@@ -87,28 +90,65 @@ async function execute(sock, msg, args) {
     }
 
     const audioUrl = downloadResponse.data.answer.audio_url;
-    const audioResponse = await axios.get(audioUrl, { responseType: 'arraybuffer' });
+    const audioResponse = await axios.get(audioUrl, { responseType: "arraybuffer" });
     const buffer = Buffer.from(audioResponse.data);
 
-    fs.writeFileSync(filePath, buffer);
+    fs.writeFileSync(inputPath, buffer);
 
-    // Send as doc message instead of document
+    // Normalize source audio to mp3 so file extension/mimetype always match payload.
+    await new Promise((resolve, reject) => {
+      const ff = spawn(ffmpegPath, [
+        "-y",
+        "-i", inputPath,
+        "-vn",
+        "-c:a", "libmp3lame",
+        "-b:a", "192k",
+        "-ar", "44100",
+        outputPath
+      ]);
+
+      let ffErr = "";
+      ff.stderr.on("data", (d) => {
+        ffErr += d.toString();
+      });
+      ff.on("close", (code) => {
+        if (code === 0) return resolve();
+        reject(new Error(`ffmpeg failed (${code}): ${ffErr}`));
+      });
+      ff.on("error", reject);
+    });
+
+    const audioBuffer = fs.readFileSync(outputPath);
+
     await sock.sendMessage(
       chatId,
       {
-        document: buffer,
-        mimetype: "audio/mp4",
+        audio: audioBuffer,
+        mimetype: "audio/mpeg",
         ptt: false, // set to true for voice note style
         fileName: `${safeTitle}.mp3`
       },
       { quoted: msg }
     );
 
-    fs.unlinkSync(filePath);
+    if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+    if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
     activeChats.delete(chatId);
 
   } catch (err) {
     console.error("PLAY ERROR:", err);
+    // Best-effort cleanup after failed conversion/download.
+    try {
+      const files = fs.readdirSync(TMP_DIR);
+      const now = Date.now();
+      for (const name of files) {
+        if (!name.includes("-")) continue;
+        const maybeTs = Number(name.split("-")[0]);
+        if (Number.isFinite(maybeTs) && now - maybeTs < 10 * 60 * 1000) {
+          fs.unlinkSync(path.join(TMP_DIR, name));
+        }
+      }
+    } catch {}
     activeChats.delete(chatId);
 
     await sock.sendMessage(
