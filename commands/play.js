@@ -123,7 +123,7 @@ async function execute(sock, msg, args) {
     await sock.sendMessage(
       chatId,
       {
-        audio: audioBuffer,
+        document: audioBuffer,
         mimetype: "audio/mpeg",
         ptt: false, // set to true for voice note style
         fileName: `${safeTitle}.mp3`
