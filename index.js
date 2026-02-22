@@ -118,6 +118,17 @@ async function startSock() {
   });
 
   /* ===========================
+   WELCOME COOLDOWN STORE
+   =========================== */
+const welcomeCooldown = new Map();
+
+/*
+Key   → sender JID
+Value → last welcome timestamp
+*/
+const WELCOME_COOLDOWN_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+  /* ===========================
      MESSAGE HANDLER
      =========================== */
   sock.ev.on("messages.upsert", async ({ messages }) => {
@@ -148,6 +159,58 @@ async function startSock() {
       body = raw;
     }
 
+    /* ===========================
+   AUTO WELCOME REPLY (HARDENED)
+   =========================== */
+
+const greetings = ["hi", "hey", "hello", "hie", "yo", "sup"];
+const normalized = body.toLowerCase().replace(/[!.]/g, "").trim();
+
+if (greetings.includes(normalized)) {
+
+  const now = Date.now();
+  const last = welcomeCooldown.get(sender);
+
+  // Cooldown gate
+  if (last && (now - last) < WELCOME_COOLDOWN_MS) {
+    return; // Silently ignore
+  }
+
+  // Update timestamp BEFORE sending (prevents race spam)
+  welcomeCooldown.set(sender, now);
+
+  await sock.sendMessage(chatId, {
+    text: `Welcome to Webs AI 🤖
+
+Here I will download for you:
+YouTube / TikTok / Facebook / Instagram videos,
+songs, documents provided you write commands correctly.
+
+🎵 Songs
+.song (song name)
+
+🎬 YouTube Videos
+.video (video title)
+
+📱 Short Videos (TikTok / Reels / Shorts)
+.short (video_link_here)
+
+📚 Documents / Books
+.doc (doc_link_here)
+
+📝 Lyrics
+.lyrics (song name)
+
+📋 To view all available Commands
+.help
+
+Note: Its recommended to remove brackets when typing commands.
+
+Downloading made easy 🔥`
+  }, { quoted: msg });
+
+  return;
+}
    
     // ===== .ping =====
     if (body.startsWith(".ping")) {
