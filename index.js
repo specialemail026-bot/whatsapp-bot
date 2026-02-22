@@ -137,6 +137,10 @@ const WELCOME_COOLDOWN_MS = 6 * 60 * 60 * 1000; // 6 hours
 
     const chatId = msg.key.remoteJid;
 
+    const sender =
+    msg.key.participant ||
+    msg.key.remoteJid;
+
     let body =
       msg.message?.conversation ||
       msg.message?.extendedTextMessage?.text ||
@@ -166,7 +170,7 @@ const WELCOME_COOLDOWN_MS = 6 * 60 * 60 * 1000; // 6 hours
 const greetings = ["hi", "hey", "hello", "hie", "yo", "sup"];
 const normalized = body.toLowerCase().replace(/[!.]/g, "").trim();
 
-if (greetings.includes(normalized)) {
+if (greetings.some(g => normalized.startsWith(g))) {
 
   const now = Date.now();
   const last = welcomeCooldown.get(sender);
