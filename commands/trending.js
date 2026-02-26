@@ -62,6 +62,24 @@ async function fetchPlaylistTracks(token, playlistId) {
   return { res, data, playlistId };
 }
 
+async function fetchSearchFallback(token) {
+  // Fallback when playlist APIs are denied (403) for the app/account context.
+  const url =
+    "https://api.spotify.com/v1/search?q=top%20hits&type=track&limit=10&market=US";
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  const data = await parseJsonSafe(res);
+  if (!res.ok) {
+    const reason = data?.error?.message || data?.error_description || `HTTP ${res.status}`;
+    throw new Error(`Spotify search fallback failed: ${reason}`);
+  }
+  const items = Array.isArray(data?.tracks?.items) ? data.tracks.items : [];
+  return items.map((track) => ({ track }));
+}
+
 export async function trendingCommand(sock, msg) {
   try {
     const token = await getSpotifyToken();
@@ -81,11 +99,14 @@ export async function trendingCommand(sock, msg) {
       lastError = `playlist ${playlistId}: ${reason}`;
     }
 
-    if (!chosen) {
-      throw new Error(`Spotify playlist request failed: ${lastError || "No accessible playlists"}`);
+    let items = [];
+    if (chosen) {
+      items = Array.isArray(chosen.data?.items) ? chosen.data.items : [];
+    } else {
+      console.warn("All playlist attempts failed; using search fallback:", lastError);
+      items = await fetchSearchFallback(token);
     }
 
-    const items = Array.isArray(chosen.data?.items) ? chosen.data.items : [];
     if (!items.length) {
       throw new Error("No trending tracks returned from Spotify.");
     }
