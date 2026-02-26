@@ -2,12 +2,19 @@ import yts from 'yt-search';
 import { spawn } from 'child_process';
 // Import from your package.json
 import { path as ffmpegPath } from '@ffmpeg-installer/ffmpeg'; 
+import { checkLimitOrPremium } from "./premium.js";
 
 export default {
   name: "song",
   description: "Download audio using yt-dlp (Bypasses 403 and Decipher errors)",
   async execute(sock, msg, args) {
-    if (args.length === 0) return sock.sendMessage(msg.key.remoteJid, { text: "⚠️ Provide a song name!" });
+    const sender = msg.key.participant || msg.key.remoteJid;
+
+    if (!(await checkLimitOrPremium(sender, "song_cmd"))) {
+      return sock.sendMessage(msg.key.remoteJid, { text: "🚫 You've reached limit.\n\n Pay K1,000 once and download without limits.\n\n📲 099 555 1995 or 088 996 4091 (Edison Chazumbwa)." }, { quoted: msg });
+    }
+
+    if (args.length === 0) return sock.sendMessage(msg.key.remoteJid, { text: "⚠️ Provide a song name!" }, { quoted: msg });
 
     const query = args.join(" ");
     const from = msg.key.remoteJid;
@@ -66,7 +73,7 @@ export default {
 
     } catch (error) {
       console.error("Critical song Error:", error);
-      await sock.sendMessage(from, { text: "❌Download failed. Try again." });
+      await sock.sendMessage(from, { text: "❌Download failed. Try again." }, { quoted: msg });
     }
   },
 };

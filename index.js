@@ -14,7 +14,7 @@ import { instagramCommand } from "./commands/instagram.js";
 import { spotifyCommand } from "./commands/spotify.js";
 import { docCommand } from "./commands/doc.js";
 import { downloadCommand } from "./commands/download.js";
-import { addPremium } from "./commands/premium.js";
+import { addPremium, isPremium } from "./commands/premium.js";
 
 import P from "pino";
 import qr from "qr-image";
@@ -32,6 +32,9 @@ const adminJids = [
   "261216018649199@lid",
   "192380812664956@lid"
 ]; // Admin JIDs for premium commands
+const adminIds = new Set(
+  adminJids.map((jid) => String(jid).split("@")[0].split(":")[0])
+);
 
 /* ===========================
    START SOCKET
@@ -188,29 +191,29 @@ if (greetings.some(g => normalized.startsWith(g))) {
 
 Here I will download for you:
 YouTube / TikTok / Facebook / Instagram videos,
-songs, documents provided you write commands correctly.
+songs, documents etc provided you write commands correctly.
 
-🎵 Songs
-.song (song name)
+🎵 To download Songs, write this
+*.song (song name)*
 
-🎬 YouTube Videos
-.video (video title)
+🎬 To download YouTube Videos, write this
+*.video (video title)*
 
-📱 Short Videos (TikTok / Reels / Shorts)
-.short (video_link_here)
+📱 To download Short Videos (TikToks / facebook / Shorts)
+*.short (video_link_here)*
 
-📚 Documents / Books
+📚 To download Documents or Books
 .doc (doc_link_here)
 
-📝 Lyrics
-.lyrics (song name)
+📝 To download song Lyrics
+*.lyrics (song name)*
 
 📋 To view all available Commands
-.help
+*.help*
 
-Note: Its recommended to remove brackets when typing commands.
+Note: Its recommended to remove those brackets when typing commands.
 
-Downloading made easy 🔥`
+_No annoying😤 ads. No Stress😊`
   }, { quoted: msg });
 
   return;
@@ -246,7 +249,7 @@ Downloading made easy 🔥`
 ┃ ▶️ .ping
 ┃ 💰 .addpremium (for admin)
 ┗━━━━━━━━━━━━━━━━━━━━━━
-  WEBS AI VERSION 1.0
+  WEBS AI VERSION 2.0
 ┗━━━━━━━━━━━━━━━━━━━━━━
 `.trim()
       }, { quoted: msg });
@@ -284,8 +287,8 @@ Did you know you can use this AI privately in your inbox?
   ✅ Unlimited downloads
   ✅ Just you and the AI
 
-To use the AI privately, pay K1,000 once and use it forever.
-📩 Inbox the admin to get started.
+To use the AI privately, pay K1,000 once and use it privately.
+📩 Inbox the admin👉0995551995 to get started.
         ` 
         }, { quoted: msg });
     }  
@@ -338,51 +341,138 @@ To use the AI privately, pay K1,000 once and use it forever.
 
     // ===== .addpremium =====
     else if (body.startsWith(".addpremium")) {
-  const sender =
-  msg.key.participant ||
-  msg.participant ||
-  msg.message?.extendedTextMessage?.contextInfo?.participant;
+      const sender = msg.key.participant || msg.key.remoteJid;
+      const senderId = String(sender || "").split("@")[0].split(":")[0];
+      console.log("Sender JID (resolved):", sender);
 
-  console.log("Sender JID (resolved):", sender);
+      if (!sender || !adminIds.has(senderId)) {
+        return sock.sendMessage(
+          chatId,
+          { text: "❌ Admin only command." },
+          { quoted: msg }
+        );
+      }
 
-if (!sender || !adminJids.includes(sender)) {
-  return sock.sendMessage(
-    chatId,
-    { text: "❌ Admin only command." },
-    { quoted: msg }
-  );
-}
-  const args = body.split(" ").slice(1);
-  if (args.length !== 1) {
-    return sock.sendMessage(
-      chatId,
-      { text: "Usage: .addpremium <phone_number|jid>\nExamples:\n.addpremium 0993287093\n.addpremium 185624896229398@lid" },
-      { quoted: msg }
-    );
-  }
+      const args = body.split(/\s+/).slice(1).filter(Boolean);
+      const contextInfo = msg.message?.extendedTextMessage?.contextInfo;
+      const quotedParticipant = contextInfo?.participant;
+      const mentioned = contextInfo?.mentionedJid || [];
+      const quotedMessage = contextInfo?.quotedMessage;
+      const nestedQuotedParticipant =
+        quotedMessage?.extendedTextMessage?.contextInfo?.participant ||
+        quotedMessage?.imageMessage?.contextInfo?.participant ||
+        quotedMessage?.videoMessage?.contextInfo?.participant ||
+        quotedMessage?.documentMessage?.contextInfo?.participant;
 
-  let jid;
-  const input = args[0];
-  
-  // Check if input is already a full JID (contains @)
-  if (input.includes("@")) {
-    jid = input; // Use as-is
-  } else {
-    // Treat as phone number and format it
-    const phone = input.replace(/\D/g, "");
-    const country = "265";
-    const fullPhone = phone.startsWith(country) ? phone : country + phone;
-    jid = `${fullPhone}@s.whatsapp.net`;
-  }
+      const normalizeJid = (jid) => (jid ? jid.split(":")[0] : jid);
+      const botJid = normalizeJid(sock.user?.id);
 
-  addPremium(jid);
+      let jid;
+      let days = 90;
 
-  await sock.sendMessage(
-    chatId,
-    { text: `✅ You have Upgraded ${jid} ` },
-    { quoted: msg }
-  );
- }
+      // Preferred mode: reply to a user's message, then send ".addpremium" or ".addpremium 30"
+      if (quotedParticipant || nestedQuotedParticipant) {
+        // If admin replies to bot's "limit reached" message, prefer nested participant (original user).
+        jid = nestedQuotedParticipant || quotedParticipant;
+        if (args.length > 1) {
+          return sock.sendMessage(
+            chatId,
+            { text: "Usage (reply mode): .addpremium [days]\nExample: reply to user then send .addpremium 30" },
+            { quoted: msg }
+          );
+        }
+        if (args.length === 1) {
+          const parsedDays = Number(args[0]);
+          if (!Number.isInteger(parsedDays) || parsedDays <= 0 || parsedDays > 3650) {
+            return sock.sendMessage(
+              chatId,
+              { text: "❌ Invalid days. Use a number between 1 and 3650." },
+              { quoted: msg }
+            );
+          }
+          days = parsedDays;
+        }
+      } else if (mentioned.length === 1) {
+        // Mention mode: .addpremium [days] with exactly one @mention
+        jid = mentioned[0];
+        if (args.length > 1) {
+          return sock.sendMessage(
+            chatId,
+            { text: "Usage (mention mode): .addpremium [days] and mention exactly one user." },
+            { quoted: msg }
+          );
+        }
+        if (args.length === 1) {
+          const parsedDays = Number(args[0]);
+          if (!Number.isInteger(parsedDays) || parsedDays <= 0 || parsedDays > 3650) {
+            return sock.sendMessage(
+              chatId,
+              { text: "❌ Invalid days. Use a number between 1 and 3650." },
+              { quoted: msg }
+            );
+          }
+          days = parsedDays;
+        }
+      } else {
+        // Legacy/manual mode: .addpremium <phone|jid> [days]
+        if (args.length < 1 || args.length > 2) {
+          return sock.sendMessage(
+            chatId,
+            { text: "Usage:\n1) Reply mode: .addpremium [days]\n2) Mention mode: .addpremium [days] + @user\n3) Manual: .addpremium <phone_number|jid> [days]\nExamples:\n.addpremium 30 (reply)\n.addpremium 30 @user\n.addpremium 0993287093\n.addpremium 185624896229398@lid" },
+            { quoted: msg }
+          );
+        }
+
+        const input = args[0];
+        if (args.length === 2) {
+          const parsedDays = Number(args[1]);
+          if (!Number.isInteger(parsedDays) || parsedDays <= 0 || parsedDays > 3650) {
+            return sock.sendMessage(
+              chatId,
+              { text: "❌ Invalid days. Use a number between 1 and 3650." },
+              { quoted: msg }
+            );
+          }
+          days = parsedDays;
+        }
+
+        if (input.includes("@")) {
+          jid = input;
+        } else {
+          const phone = input.replace(/\D/g, "");
+          const country = "265";
+          const fullPhone = phone.startsWith(country) ? phone : country + phone;
+          jid = `${fullPhone}@s.whatsapp.net`;
+        }
+      }
+
+      jid = normalizeJid(jid);
+
+      if (!jid) {
+        return sock.sendMessage(
+          chatId,
+          { text: "❌ Could not resolve target user. Reply directly to the user's message or mention one user." },
+          { quoted: msg }
+        );
+      }
+
+      if (jid === botJid) {
+        return sock.sendMessage(
+          chatId,
+          { text: "❌ You replied to the bot message. Reply to the user's message (or mention user) instead." },
+          { quoted: msg }
+        );
+      }
+
+      await addPremium(jid, days);
+      const nowPremium = await isPremium(jid);
+
+      await sock.sendMessage(
+        chatId,
+        { text: nowPremium ? `✅ Premium activated for ${jid}\n🗓 Duration: ${days} day(s)` : `⚠️ Tried to activate premium for ${jid}, but verification failed. Check logs/database.` },
+        { quoted: msg }
+      );
+    }
 
    // ===== .vv =====
     else if (body.startsWith(".vv")) {

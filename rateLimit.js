@@ -4,10 +4,19 @@ import path from "path";
 // Resolve data directory the same way as index.js and premium.js
 const DATA_DIR = process.env.DATA_DIR || (fs.existsSync("/data") ? "/data" : path.join(process.cwd(), "data"));
 const USAGE_FILE = path.join(DATA_DIR, "usage.json");
-
-function getToday() {
-  return new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-}
+const FREE_LIMITS = {
+  play: 1,
+  download: 1,
+  song_cmd: 1,
+  lyrics: 1,
+  short: 1,
+  instagram: 1,
+  video: 2,
+  // Legacy/shared buckets for commands not yet migrated.
+  song: 3,
+  song_legacy: 3,
+  video_legacy: 2
+};
 
 function loadUsage() {
   try {
@@ -32,31 +41,37 @@ function saveUsage(usage) {
 }
 
 export function checkAndIncrementLimit(senderJid, type) {
-  // Track usage per-sender (user JID) rather than per-chat/group.
-  const today = getToday();
+  // Track usage per-sender (user JID), lifetime by command key.
   const usage = loadUsage();
 
   if (!usage[senderJid]) {
-    usage[senderJid] = { date: today, songs: 0, videos: 0 };
+    usage[senderJid] = { counts: {} };
   }
 
   const userUsage = usage[senderJid];
-
-  // Reset counts when day changes
-  if (userUsage.date !== today) {
-    userUsage.date = today;
-    userUsage.songs = 0;
-    userUsage.videos = 0;
+  if (!userUsage.counts || typeof userUsage.counts !== "object") {
+    userUsage.counts = {};
   }
 
-  const limit = type === "song" ? 15 : 10; // Daily limits
-  const current = userUsage[type + "s"]; // songs or videos
+  // Backward-compatible migration for previous schema.
+  if (typeof userUsage.songs === "number" && userUsage.counts.song_legacy === undefined) {
+    userUsage.counts.song_legacy = userUsage.songs;
+  }
+  if (typeof userUsage.videos === "number" && userUsage.counts.video_legacy === undefined) {
+    userUsage.counts.video_legacy = userUsage.videos;
+  }
+  delete userUsage.songs;
+  delete userUsage.videos;
+  delete userUsage.date;
+
+  const limit = FREE_LIMITS[type] ?? 1;
+  const current = userUsage.counts[type] ?? 0;
 
   if (current >= limit) {
     return false; // Limit reached for this sender
   }
 
-  userUsage[type + "s"]++;
+  userUsage.counts[type] = current + 1;
   saveUsage(usage);
   return true;
 }

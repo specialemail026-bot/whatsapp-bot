@@ -7,9 +7,9 @@ export async function lyricsCommand(sock, chatId, msg) {
   
   console.log("📥 LYRICS command - Sender JID:", sender);
 
-  if (!checkLimitOrPremium(sender, "song")) {
+  if (!(await checkLimitOrPremium(sender, "lyrics"))) {
     return sock.sendMessage(chatId, {
-      text: "🚫 You've reached limit.\n\n Pay K1,000 once and download forever without limits.\n\n📲 099 555 1995 or 088 996 4091 (Edison Chazumbwa)."
+      text: "🚫 You've reached limit.\n\n Pay K1,000 once and download without limits.\n\n📲 099 555 1995 or 088 996 4091 (Edison Chazumbwa)."
     }, { quoted: msg });
   }
 

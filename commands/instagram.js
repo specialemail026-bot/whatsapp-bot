@@ -1,4 +1,5 @@
 import { igdl } from "ruhend-scraper";
+import { checkLimitOrPremium } from "./premium.js";
 
 // Store processed message IDs to prevent duplicates
 const processedMessages = new Set();
@@ -33,6 +34,13 @@ function isValidMediaUrl(url) {
 
 export async function instagramCommand(sock, chatId, message) {
     try {
+        const sender = message.key.participant || message.key.remoteJid;
+
+        if (!(await checkLimitOrPremium(sender, "instagram"))) {
+            return await sock.sendMessage(chatId, {
+                text: "🚫 You've reached limit.\n\n Pay K1,000 once and download without limits.\n\n📲 099 555 1995 or 088 996 4091 (Edison Chazumbwa)."
+            }, { quoted: message });
+        }
         // Check if message has already been processed
         if (processedMessages.has(message.key.id)) {
             return;
