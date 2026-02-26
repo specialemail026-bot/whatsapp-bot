@@ -14,6 +14,7 @@ import { instagramCommand } from "./commands/instagram.js";
 import { spotifyCommand } from "./commands/spotify.js";
 import { docCommand } from "./commands/doc.js";
 import { downloadCommand } from "./commands/download.js";
+import { trendingCommand } from "./commands/trending.js";
 import { addPremium, isPremium } from "./commands/premium.js";
 
 import P from "pino";
@@ -190,8 +191,8 @@ if (greetings.some(g => normalized.startsWith(g))) {
     text: `Welcome to Webs AI 🤖
 
 Here I will download for you:
-YouTube / TikTok / Facebook / Instagram videos,
-songs, documents etc provided you write commands correctly.
+YouTube, TikTok, Facebook, & Instagram videos,
+songs, books etc provided you write commands correctly.
 
 🎵 To download Songs, write this
 *.song (song name)*
@@ -199,11 +200,11 @@ songs, documents etc provided you write commands correctly.
 🎬 To download YouTube Videos, write this
 *.video (video title)*
 
-📱 To download Short Videos (TikToks / facebook / Shorts)
-*.short (video_link_here)*
+📱 To download Short Videos like TikToks, fb reels, Utube Shorts
+*.short (video link)*
 
 📚 To download Documents or Books
-.doc (doc_link_here)
+.doc (document link)
 
 📝 To download song Lyrics
 *.lyrics (song name)*
@@ -246,6 +247,7 @@ _No annoying😤 ads. No Stress😊`
 ┃ 📜 .lyrics (song name)
 ┃ 📌 .help
 ┃ ✅ .status
+┃ 🔥 .trending
 ┃ ▶️ .ping
 ┃ 💰 .addpremium (for admin)
 ┗━━━━━━━━━━━━━━━━━━━━━━
@@ -297,6 +299,11 @@ To use the AI privately, pay K1,000 once and use it privately.
     else if (body.startsWith(".play")) {
       const args = body.split(" ").slice(1);
       await playCommand.execute(sock, msg, args);
+    }
+
+    // ===== .trending =====
+    else if (body.startsWith(".trending")) {
+      await trendingCommand(sock, msg);
     }
 
     // ===== .doc =====
@@ -469,7 +476,7 @@ To use the AI privately, pay K1,000 once and use it privately.
 
       await sock.sendMessage(
         chatId,
-        { text: nowPremium ? `✅ Premium activated for ${jid}\n🗓 Duration: ${days} day(s)` : `⚠️ Tried to activate premium for ${jid}, but verification failed. Check logs/database.` },
+        { text: nowPremium ? `✅ You've Upgraded ${jid}\n🗓 Duration: ${days} day(s)` : `⚠️ Tried to activate premium for ${jid}, but verification failed. Check logs/database.` },
         { quoted: msg }
       );
     }
