@@ -1,6 +1,9 @@
 const SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token";
-const TOP_TRACKS_URL =
-  "https://api.spotify.com/v1/playlists/37i9dQZEVXbMDoHDwVN2tF/tracks?limit=10";
+const PLAYLIST_IDS = [
+  "37i9dQZEVXbMDoHDwVN2tF", // Global Top 50
+  "37i9dQZF1DXcBWIGoYBM5M", // Today's Top Hits
+  "37i9dQZEVXbLRQDuF5jeBp"  // US Top 50
+];
 
 let cachedToken = null;
 let tokenExpiresAt = 0;
@@ -48,23 +51,41 @@ async function getSpotifyToken() {
   return cachedToken;
 }
 
+async function fetchPlaylistTracks(token, playlistId) {
+  const url = `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=10&market=US`;
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  const data = await parseJsonSafe(res);
+  return { res, data, playlistId };
+}
+
 export async function trendingCommand(sock, msg) {
   try {
     const token = await getSpotifyToken();
 
-    const res = await fetch(TOP_TRACKS_URL, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    const data = await parseJsonSafe(res);
-    if (!res.ok) {
-      const reason = data?.error?.message || data?.error_description || `HTTP ${res.status}`;
-      throw new Error(`Spotify playlist request failed: ${reason}`);
+    let chosen = null;
+    let lastError = null;
+    for (const playlistId of PLAYLIST_IDS) {
+      const attempt = await fetchPlaylistTracks(token, playlistId);
+      if (attempt.res.ok && Array.isArray(attempt.data?.items) && attempt.data.items.length) {
+        chosen = attempt;
+        break;
+      }
+      const reason =
+        attempt.data?.error?.message ||
+        attempt.data?.error_description ||
+        `HTTP ${attempt.res.status}`;
+      lastError = `playlist ${playlistId}: ${reason}`;
     }
 
-    const items = Array.isArray(data?.items) ? data.items : [];
+    if (!chosen) {
+      throw new Error(`Spotify playlist request failed: ${lastError || "No accessible playlists"}`);
+    }
+
+    const items = Array.isArray(chosen.data?.items) ? chosen.data.items : [];
     if (!items.length) {
       throw new Error("No trending tracks returned from Spotify.");
     }
