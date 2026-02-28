@@ -204,7 +204,7 @@ songs, books etc provided you write commands correctly.
 *.short (video link)*
 
 📚 To download Documents or Books
-.doc (document link)
+*.doc (document link)*
 
 📝 To download song Lyrics
 *.lyrics (song name)*
@@ -214,7 +214,7 @@ songs, books etc provided you write commands correctly.
 
 Note: Its recommended to remove those brackets when typing commands.
 
-_No annoying😤 ads. No Stress😊`
+_Downloading Made Easy_`
   }, { quoted: msg });
 
   return;
