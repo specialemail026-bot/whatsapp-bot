@@ -31,7 +31,8 @@ process.on("unhandledRejection", (reason) => console.error("UNHANDLED REJECTION:
 
 const adminJids = [
   "261216018649199@lid",
-  "192380812664956@lid"
+  "192380812664956@lid",
+  "145917739024404@lid"
 ]; // Admin JIDs for premium commands
 const adminIds = new Set(
   adminJids.map((jid) => String(jid).split("@")[0].split(":")[0])

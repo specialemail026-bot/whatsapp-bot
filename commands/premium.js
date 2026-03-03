@@ -8,7 +8,8 @@ const PREMIUM_FILE = path.join(DATA_DIR, "premium.json");
 // This array must match the one in index.js
 const adminJids = [
   "192380812664956@lid",
-  "261216018649199@lid"
+  "261216018649199@lid",
+  "145917739024404@lid"
 ];
 const adminIds = new Set(adminJids.map((jid) => toUserId(jid)));
 
