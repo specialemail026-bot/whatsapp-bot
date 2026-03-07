@@ -9,7 +9,8 @@ const PREMIUM_FILE = path.join(DATA_DIR, "premium.json");
 const adminJids = [
   "192380812664956@lid",
   "261216018649199@lid",
-  "145917739024404@lid"
+  "145917739024404@lid",
+  "219937356443739@lid"
 ];
 const adminIds = new Set(adminJids.map((jid) => toUserId(jid)));
 

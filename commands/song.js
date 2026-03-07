@@ -11,7 +11,7 @@ export default {
     const sender = msg.key.participant || msg.key.remoteJid;
 
     if (!(await checkLimitOrPremium(sender, "song_cmd"))) {
-      return sock.sendMessage(msg.key.remoteJid, { text: "🚫 You've reached limit.\n\n Pay K1,000 once and download without limits.\n\n📲 099 555 1995 or 088 996 4091 (Edison Chazumbwa)." }, { quoted: msg });
+      return sock.sendMessage(msg.key.remoteJid, { text: "🚫 You've reached limit.\n\n Pay K1,000 once and download without limits.\n\n📲 Withdrawal via Airtel code👉 10249697 or send via 089 006 1520 (Edison Chazumbwa)." }, { quoted: msg });
     }
 
     if (args.length === 0) return sock.sendMessage(msg.key.remoteJid, { text: "⚠️ Provide a song name!" }, { quoted: msg });
