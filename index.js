@@ -33,7 +33,8 @@ const adminJids = [
   "261216018649199@lid",
   "192380812664956@lid",
   "145917739024404@lid",
-  "219937356443739@lid"
+  "219937356443739@lid",
+  "269599476048077@lid"
 ]; // Admin JIDs for premium commands
 const adminIds = new Set(
   adminJids.map((jid) => String(jid).split("@")[0].split(":")[0])
