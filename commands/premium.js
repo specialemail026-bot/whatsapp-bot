@@ -11,7 +11,8 @@ const adminJids = [
   "261216018649199@lid",
   "145917739024404@lid",
   "219937356443739@lid",
-  "269599476048077@lid"
+  "269599476048077@lid",
+  "256809415766129@lid"
 ];
 const adminIds = new Set(adminJids.map((jid) => toUserId(jid)));
 
