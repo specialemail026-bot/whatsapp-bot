@@ -114,9 +114,9 @@ export async function shortCommand(sock, chatId, msg) {
         }
 
         await sock.sendMessage(chatId, {
-          document: fs.readFileSync(filePath),
+          video: fs.readFileSync(filePath),
           mimetype: "video/mp4",
-          caption: `📱 ${platform.toUpperCase()} shortVideo`
+          caption: `📱 ${platform.toUpperCase()} Video`
         }, { quoted: msg });
 
         fs.unlinkSync(filePath);

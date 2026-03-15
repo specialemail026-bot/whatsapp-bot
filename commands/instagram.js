@@ -120,7 +120,7 @@ export async function instagramCommand(sock, chatId, message) {
 
                 if (isVideo) {
                     await sock.sendMessage(chatId, {
-                        document: { url: mediaUrl },
+                        video: { url: mediaUrl },
                         mimetype: "video/mp4",
                         caption: `📱 ${platform.toUpperCase()} short`
                     }, { quoted: message });
