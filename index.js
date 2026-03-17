@@ -175,7 +175,7 @@ const WELCOME_COOLDOWN_MS = 6 * 60 * 60 * 1000; // 6 hours
    AUTO WELCOME REPLY (HARDENED)
    =========================== */
 
-const greetings = ["hi", "hey", "hello", "hie", "yo", "sup"];
+const greetings = ["hi", "hey", "hy", "hello", "hie", "yo", "sup"];
 const normalized = body.toLowerCase().replace(/[!.]/g, "").trim();
 
 if (greetings.some(g => normalized.startsWith(g))) {

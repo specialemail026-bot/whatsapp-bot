@@ -5,13 +5,13 @@ import path from "path";
 const DATA_DIR = process.env.DATA_DIR || (fs.existsSync("/data") ? "/data" : path.join(process.cwd(), "data"));
 const USAGE_FILE = path.join(DATA_DIR, "usage.json");
 const FREE_LIMITS = {
-  play: 3,
-  download: 3,
-  song_cmd: 3,
+  play: 1,
+  download: 1,
+  song_cmd: 1,
   lyrics: 1,
-  short: 2,
+  short: 1,
   instagram: 1,
-  video: 2,
+  video: 1,
   // Legacy/shared buckets for commands not yet migrated.
   song: 3,
   song_legacy: 3,

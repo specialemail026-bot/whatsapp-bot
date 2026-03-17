@@ -13,7 +13,7 @@ export async function videoCommand(sock, chatId, msg) {
 
   if (!(await checkLimitOrPremium(sender, "video"))) {
     return sock.sendMessage(chatId, {
-      text: "🚫 You've reached limit.\n\n Pay K1,000 once and download without limits.\n\n📲 Withdrawal via Airtel code👉 10249697 or send via 089 006 1520 (Edison Chazumbwa)."
+      text: "🚫 You've reached downloading limit.\n\n UPGRADE to Premium so you can download without limits for 1 month at K1,000 ONLY.\n\n📲 Withdrawal via Airtel code👉 *10249697* or TNM 089 006 1520 (Edison Chazumbwa)."
     }, { quoted: msg });
   }
 
@@ -88,8 +88,8 @@ export async function videoCommand(sock, chatId, msg) {
       url: downloadUrl,
       responseType: 'stream',
       timeout: 120000, // 2 minute timeout for download
-      maxContentLength: 100 * 1024 * 1024, // 100MB limit
-      maxBodyLength: 100 * 1024 * 1024
+      maxContentLength: 200 * 1024 * 1024, // 200MB limit
+      maxBodyLength: 200 * 1024 * 1024
     });
 
     const writer = fs.createWriteStream(inputPath);
@@ -102,8 +102,8 @@ export async function videoCommand(sock, chatId, msg) {
 
     const stats = fs.statSync(inputPath);
 
-    // WhatsApp limit guard (~100MB)
-    if (stats.size > 95 * 1024 * 1024) {
+    // WhatsApp limit guard (~200MB)
+    if (stats.size > 295 * 1024 * 1024) {
       if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
       return sock.sendMessage(chatId, {
         text: "⚠️ Video too large for WhatsApp.\nTry a shorter video."

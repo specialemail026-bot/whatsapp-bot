@@ -38,7 +38,7 @@ export async function instagramCommand(sock, chatId, message) {
 
         if (!(await checkLimitOrPremium(sender, "instagram"))) {
             return await sock.sendMessage(chatId, {
-                text: "🚫 You've reached limit.\n\n Pay K1,000 once and download without limits.\n\n📲 Withdrawal via Airtel code (10249697) or send👉 089 006 1520 (Edison Chazumbwa)."
+                text: "🚫 You've reached downloading limit.\n\n UPGRADE to Premium so you can download without limits for 1 month at K1,000 ONLY.\n\n📲 Withdrawal via Airtel code👉 *10249697* or TNM 089 006 1520 (Edison Chazumbwa)."
             }, { quoted: message });
         }
         // Check if message has already been processed
