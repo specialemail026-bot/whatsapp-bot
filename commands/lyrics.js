@@ -9,7 +9,7 @@ export async function lyricsCommand(sock, chatId, msg) {
 
   if (!(await checkLimitOrPremium(sender, "lyrics"))) {
     return sock.sendMessage(chatId, {
-      text: "🚫 You've reached downloading limit.\n\n UPGRADE to Premium so you can download without limits for 1 month at K1,000 ONLY.\n\n📲 Withdrawal via Airtel code👉 *10249697* or TNM 089 006 1520 (Edison Chazumbwa)."
+      text: "🚫 You've reached downloading limit.\n\n UPGRADE to Premium so you can download without limits for 1 month at K1,000 ONLY.\n\n📲 Withdrawal via Airtel code👉 *10249697* or TNM 089 006 1520 (Edison Chazumbwa).\n\n Contact admins at 0995551995, 0993702468, 0886219577 for help."
     }, { quoted: msg });
   }
 

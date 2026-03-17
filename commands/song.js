@@ -11,7 +11,7 @@ export default {
     const sender = msg.key.participant || msg.key.remoteJid;
 
     if (!(await checkLimitOrPremium(sender, "song_cmd"))) {
-      return sock.sendMessage(msg.key.remoteJid, { text: "🚫 You've reached downloading limit.\n\n UPGRADE to Premium so you can download without limits for 1 month at K1,000 ONLY.\n\n📲 Withdrawal via Airtel code👉 *10249697* or TNM 089 006 1520 (Edison Chazumbwa)." }, { quoted: msg });
+      return sock.sendMessage(msg.key.remoteJid, { text: "🚫 You've reached downloading limit.\n\n UPGRADE to Premium so you can download without limits for 1 month at K1,000 ONLY.\n\n📲 Withdrawal via Airtel code👉 *10249697* or TNM 089 006 1520 (Edison Chazumbwa).\n\n Contact admins at 0995551995, 0993702468, 0886219577 for help." }, { quoted: msg });
     }
 
     if (args.length === 0) return sock.sendMessage(msg.key.remoteJid, { text: "⚠️ Provide a song name!" }, { quoted: msg });
