@@ -192,31 +192,32 @@ if (greetings.some(g => normalized.startsWith(g))) {
   welcomeCooldown.set(sender, now);
 
   await sock.sendMessage(chatId, {
-    text: `Welcome to Webs AI 🤖
+    text: `Takulandirani ku Webs AI 🤖
 
-Here I will download for you:
-YouTube, TikTok, Facebook, & Instagram videos,
-songs, books etc provided you write commands correctly.
+*Pano ndkupatsan nyimbo, ma videos, ma books, lyrics
+ndi zina zose mukufuna pompano*
 
-🎵 To download Songs, write this
-*.song (song name)*
+Tsatirani malangizo pansipa👇 kuti mudziwe momwe mungagwiritsire ntchito Webs AI:
 
-🎬 To download YouTube Videos, write this
-*.video (video title)*
+🎵 ngat mukufuna nyimbo, lemban chochi
+*.song (dzina la nyimbo)*
 
-📱 To download Short Videos like TikToks, fb reels, Utube Shorts
-*.short (video link)*
+🎬 ngat mukufuna video, lemban chochi
+*.video (dzina la video)*
 
-📚 To download Documents or Books
-*.doc (document link)*
+📱 ngat mukufuna ma videos apa  tiktok, fb or IG, lemban chochi
+*.short (paste video link here)*
 
-📝 To download song Lyrics
-*.lyrics (song name)*
+📚 ngat mukufuna ma books, lemban chochi
+*.doc (paste document link here)*
 
-📋 To view all available Commands
+📝 ngat mukufuna ma lyrics, lemban chochi
+*.lyrics (dzina la nyimbo)*
+
+📋 kut muone ma commands onse
 *.help*
 
-Note: Its recommended to remove those brackets when typing commands.
+*Note: _osaiwala full stop koyambilirako kmaso Onetsetsan kut ma branckets mukuchotsa._*
 
 _Downloading Made Easy_`
   }, { quoted: msg });
