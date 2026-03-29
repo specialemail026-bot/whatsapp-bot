@@ -194,32 +194,38 @@ if (greetings.some(g => normalized.startsWith(g))) {
   await sock.sendMessage(chatId, {
     text: `Takulandirani ku Webs AI 🤖
 
-*Pano ndkupatsan nyimbo, ma videos, ma books, lyrics
-ndi zina zose mukufuna pompano*
+*Ndikupatsan nyimbo, ma videos, ma books, lyrics*
+*ndi zina zose mukufunazo pompano*
 
-Tsatirani malangizo pansipa👇 kuti mudziwe momwe mungagwiritsire ntchito Webs AI:
+*Tsatirani izi👇 kuti mudziwe momwe mungagwiritsire ntchito Webs AI:*
 
-🎵 ngat mukufuna nyimbo, lemban chochi
+🎵 ngat mukufuna nyimbo, lemban chochi👇
+
 *.song (dzina la nyimbo)*
 
-🎬 ngat mukufuna video, lemban chochi
+🎬 ngat mukufuna video, lemban chochi👇
+
 *.video (dzina la video)*
 
-📱 ngat mukufuna ma videos apa  tiktok, fb or IG, lemban chochi
+📱 ngat mukufuna ma videos apa  tiktok, fb or IG, lemban chochi👇
+
 *.short (paste video link here)*
 
-📚 ngat mukufuna ma books, lemban chochi
+📚 ngat mukufuna ma books, lemban chochi👇
+
 *.doc (paste document link here)*
 
-📝 ngat mukufuna ma lyrics, lemban chochi
+📝 ngat mukufuna ma lyrics, lemban chochi👇
+
 *.lyrics (dzina la nyimbo)*
 
-📋 kut muone ma commands onse
+📋 kut muone ma commands onse👇
+
 *.help*
 
-*Note: _osaiwala full stop koyambilirako kmaso Onetsetsan kut ma branckets mukuchotsa._*
+*Note: _osaiwala full stop koyambilirako kmaso Onetsetsan🧐 kut ma brackets mukuchotsa._*
 
-_Downloading Made Easy_`
+_Downloading Made Simple🔥_`
   }, { quoted: msg });
 
   return;
