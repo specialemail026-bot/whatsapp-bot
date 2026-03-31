@@ -2,11 +2,11 @@ import axios from "axios";
 import { checkLimitOrPremium } from "./premium.js";
 
 const AI_BASE = "https://ef-prime-md-ultra-apis.vercel.app";
-//const AI_MODEL = "gpt-5";
+const AI_MODEL = "gpt-5";
 const CHATGPT_HEADER = "🤖ChatGPT response";
 const CURSOR = "|";
 const TYPING_UPDATE_INTERVAL_MS = 500;
-const WORDS_PER_TICK = 2;
+const WORDS_PER_TICK = 5;
 const MAX_MESSAGE_LENGTH = 3800;
 
 function delay(ms) {
