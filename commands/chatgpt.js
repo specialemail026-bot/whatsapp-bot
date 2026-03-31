@@ -3,80 +3,49 @@ import { checkLimitOrPremium } from "./premium.js";
 
 const AI_BASE = "https://ef-prime-md-ultra-apis.vercel.app";
 const AI_MODEL = "gpt-5";
-const CHATGPT_HEADER = "[ChatGPT Response]";
-const TYPING_UPDATE_INTERVAL_MS = 350;
-const MAX_WORDS_PER_UPDATE = 3;
-const MAX_CHARS_PER_MESSAGE = 3800;
+const CHATGPT_HEADER = "[ChatGPT]";
+const CURSOR = "|";
+const TYPING_UPDATE_INTERVAL_MS = 300;
+const WORDS_PER_TICK = 2;
+const MAX_MESSAGE_LENGTH = 3800;
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// Format response with better styling for WhatsApp
 function formatAIResponse(answer) {
-  let formatted = answer.trim();
+  let formatted = answer.trim().replace(/\r\n/g, "\n");
 
-  // Add better spacing between paragraphs
-  formatted = formatted.replace(/\n\n+/g, "\n\n");
+  // Normalize spacing without disturbing code blocks.
+  formatted = formatted.replace(/\n{3,}/g, "\n\n");
 
-  // Convert markdown-style headers (# Header) to bold
-  formatted = formatted.replace(/^#+\s+(.+)$/gm, "*$1*");
+  // Convert markdown headings to WhatsApp bold.
+  formatted = formatted.replace(/^#{1,6}\s+(.+)$/gm, "*$1*");
 
-  // Convert markdown bold (**text**) to WhatsApp bold (*text*)
+  // Convert markdown bold to WhatsApp bold.
   formatted = formatted.replace(/\*\*(.+?)\*\*/g, "*$1*");
 
-  // Add line breaks for better readability (limit line length)
-  const lines = formatted.split("\n");
-  const formattedLines = lines.map((line) => {
-    if (line.length > 80) {
-      // Break long lines for better readability
-      const words = line.split(" ");
-      let currentLine = "";
-      const result = [];
+  // Normalize bullet markers for cleaner list rendering.
+  formatted = formatted.replace(/^[\-\*]\s+/gm, "- ");
 
-      words.forEach((word) => {
-        if ((currentLine + word).length > 80) {
-          if (currentLine) result.push(currentLine);
-          currentLine = word;
-        } else {
-          currentLine = currentLine ? `${currentLine} ${word}` : word;
-        }
-      });
-
-      if (currentLine) result.push(currentLine);
-      return result.join("\n");
-    }
-
-    return line;
+  // Preserve fenced code blocks and trim extra empty lines inside them.
+  formatted = formatted.replace(/```(\w+)?\n([\s\S]*?)```/g, (_, language = "", code = "") => {
+    const cleanCode = code.replace(/\n{3,}/g, "\n\n").trimEnd();
+    return language
+      ? `\`\`\`${language}\n${cleanCode}\n\`\`\``
+      : `\`\`\`\n${cleanCode}\n\`\`\``;
   });
 
-  return formattedLines.join("\n");
+  // If the model returned unfenced code, wrap obvious code-like blocks.
+  formatted = formatted.replace(
+    /(?:^|\n)((?:(?:const|let|var|function|class|if|for|while|return|import|export|async|await|<\w+|SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER).*(?:\n|$)){2,})/gm,
+    (_, codeBlock) => `\n\`\`\`\n${codeBlock.trim()}\n\`\`\``
+  );
+
+  return formatted.trim();
 }
 
-function buildTypingFrames(fullAnswer) {
-  const words = fullAnswer.split(/\s+/).filter(Boolean);
-
-  if (!words.length) {
-    return [`${CHATGPT_HEADER}\n\n`];
-  }
-
-  const frames = [];
-  let currentWords = [];
-
-  for (let i = 0; i < words.length; i += MAX_WORDS_PER_UPDATE) {
-    currentWords.push(...words.slice(i, i + MAX_WORDS_PER_UPDATE));
-    frames.push(`${CHATGPT_HEADER}\n\n${currentWords.join(" ")}`);
-  }
-
-  const finalFrame = `${CHATGPT_HEADER}\n\n${fullAnswer}`;
-  if (frames[frames.length - 1] !== finalFrame) {
-    frames.push(finalFrame);
-  }
-
-  return frames;
-}
-
-function splitIntoMessageParts(text, maxLength = MAX_CHARS_PER_MESSAGE) {
+function splitMessageParts(text, maxLength = MAX_MESSAGE_LENGTH) {
   if (text.length <= maxLength) {
     return [text];
   }
@@ -104,17 +73,42 @@ function splitIntoMessageParts(text, maxLength = MAX_CHARS_PER_MESSAGE) {
   return parts;
 }
 
-// Simulate typing animation by editing the same message as the answer grows.
-async function streamResponse(sock, chatId, msg, fullAnswer) {
-  const messageParts = splitIntoMessageParts(fullAnswer);
+function buildStreamingFrames(text) {
+  const tokens = text.match(/\S+\s*/g) || [];
+  if (tokens.length === 0) {
+    return [""];
+  }
 
-  for (let partIndex = 0; partIndex < messageParts.length; partIndex++) {
-    const part = messageParts[partIndex];
-    const frames = buildTypingFrames(part);
+  const frames = [];
+  let current = "";
+
+  for (let i = 0; i < tokens.length; i += WORDS_PER_TICK) {
+    current += tokens.slice(i, i + WORDS_PER_TICK).join("");
+    frames.push(current.trimEnd());
+  }
+
+  if (frames[frames.length - 1] !== text) {
+    frames.push(text);
+  }
+
+  return frames;
+}
+
+function buildDisplayText(body, showCursor) {
+  const cursor = showCursor ? CURSOR : "";
+  return `${CHATGPT_HEADER} (${AI_MODEL})\n\n${body}${cursor}`;
+}
+
+async function streamResponse(sock, chatId, msg, fullAnswer) {
+  const parts = splitMessageParts(fullAnswer);
+
+  for (let partIndex = 0; partIndex < parts.length; partIndex++) {
+    const part = parts[partIndex];
+    const frames = buildStreamingFrames(part);
 
     let sentMessage = await sock.sendMessage(
       chatId,
-      { text: frames[0] },
+      { text: buildDisplayText(frames[0], true) },
       { quoted: partIndex === 0 ? msg : undefined }
     );
 
@@ -123,13 +117,22 @@ async function streamResponse(sock, chatId, msg, fullAnswer) {
         await sock.sendPresenceUpdate("composing", chatId);
         await delay(TYPING_UPDATE_INTERVAL_MS);
         sentMessage = await sock.sendMessage(chatId, {
-          text: frames[i],
+          text: buildDisplayText(frames[i], true),
           edit: sentMessage.key,
         });
       } catch (err) {
         console.error("Stream update error:", err.message);
         break;
       }
+    }
+
+    try {
+      await sock.sendMessage(chatId, {
+        text: buildDisplayText(part, false),
+        edit: sentMessage.key,
+      });
+    } catch (err) {
+      console.error("Final stream update error:", err.message);
     }
 
     await sock.sendPresenceUpdate("paused", chatId);
@@ -145,7 +148,7 @@ export async function chatgptCommand(sock, chatId, msg) {
     return sock.sendMessage(
       chatId,
       {
-        text: "You've reached downloading limit.\n\nUPGRADE to Premium so you can download without limits for 1 month at K1,000 ONLY.\n\nWithdrawal via Airtel code *10249697* or TNM 089 006 1520 (Edison Chazumbwa).\n\nContact admins at 0995551995, 0993702468, 0886219577 for help.",
+        text: "You have reached your limit for ChatGPT. Please consider *upgrading to premium for unlimited access.*\n\nContact admins to upgrade",
       },
       { quoted: msg }
     );
@@ -161,14 +164,14 @@ export async function chatgptCommand(sock, chatId, msg) {
     if (!message) {
       return sock.sendMessage(
         chatId,
-        { text: "Type this: .chatgpt your question here" },
+        { text: "Type this: .chatgpt (your question here)" },
         { quoted: msg }
       );
     }
 
     const thinkingMessage = await sock.sendMessage(
       chatId,
-      { text: "Generating response..." },
+      { text: "Thinking..." },
       { quoted: msg }
     );
 
@@ -177,7 +180,6 @@ export async function chatgptCommand(sock, chatId, msg) {
     console.log("Sending to ChatGPT:", url);
 
     const response = await axios.get(url, { timeout: 30000 });
-
     const answer = response.data?.answer;
 
     if (!answer) {
