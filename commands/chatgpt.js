@@ -2,7 +2,47 @@ import axios from "axios";
 import { checkLimitOrPremium } from "./premium.js";
 
 const AI_BASE = "https://ef-prime-md-ultra-apis.vercel.app";
-const AI_MODEL = "gpt-5"; 
+const AI_MODEL = "gpt-5";
+
+// Format response with better styling for WhatsApp
+function formatAIResponse(answer) {
+  let formatted = answer.trim();
+  
+  // Add better spacing between paragraphs
+  formatted = formatted.replace(/\n\n+/g, "\n\n");
+  
+  // Convert markdown-style headers (# Header) to bold
+  formatted = formatted.replace(/^#+\s+(.+)$/gm, "*$1*");
+  
+  // Convert markdown bold (**text**) to WhatsApp bold (*text*)
+  formatted = formatted.replace(/\*\*(.+?)\*\*/g, "*$1*");
+  
+  // Add line breaks for better readability (limit line length)
+  const lines = formatted.split("\n");
+  const formattedLines = lines.map(line => {
+    if (line.length > 80) {
+      // Break long lines for better readability
+      const words = line.split(" ");
+      let currentLine = "";
+      const result = [];
+      
+      words.forEach(word => {
+        if ((currentLine + word).length > 80) {
+          if (currentLine) result.push(currentLine);
+          currentLine = word;
+        } else {
+          currentLine = currentLine ? currentLine + " " + word : word;
+        }
+      });
+      if (currentLine) result.push(currentLine);
+      return result.join("\n");
+    }
+    return line;
+  });
+  
+  return formattedLines.join("\n");
+}
+ 
 
 export async function chatgptCommand(sock, chatId, msg) {
   const sender = msg.key.participant || msg.key.remoteJid;
@@ -56,7 +96,16 @@ export async function chatgptCommand(sock, chatId, msg) {
       );
     }
 
-    const finalMessage = `🤖 *ChatGPT (${AI_MODEL})*\n\n${answer.trim()}\n\n━━━━━━━━\nPowered by FRANKKAUMBADEV`;
+    const formattedAnswer = formatAIResponse(answer);
+    
+    const finalMessage = `╔═══════════════════════════
+║ 🤖 *ChatGPT Response*
+╚═══════════════════════════
+
+${formattedAnswer}
+
+━━━━━━━━━━━━━━━━━━━━━━━
+✨ Powered by Webs AI`;
 
     await sock.sendMessage(chatId, { text: finalMessage }, { quoted: msg });
 
