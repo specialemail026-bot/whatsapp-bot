@@ -43,8 +43,43 @@ function formatAIResponse(answer) {
   return formattedLines.join("\n");
 }
 
+// Simulate typing animation by building message word by word
+async function streamResponse(sock, chatId, msg, fullAnswer) {
+  const words = fullAnswer.split(" ");
+  let currentMessage = `🤖 *ChatGPT Response*\n\n`;
+  let lastSendTime = Date.now();
+  let sentMessageKey = null;
 
- 
+  for (let i = 0; i < words.length; i++) {
+    currentMessage += words[i] + " ";
+    
+    // Send/update every 250ms for smooth animation
+    if (Date.now() - lastSendTime > 250 || i === words.length - 1) {
+      try {
+        if (!sentMessageKey) {
+          // First send
+          const result = await sock.sendMessage(
+            chatId,
+            { text: currentMessage.trim() },
+            { quoted: msg }
+          );
+          sentMessageKey = result.key;
+        } else {
+          // Edit existing message
+          await sock.editMessage(
+            chatId,
+            sentMessageKey,
+            { text: currentMessage.trim() }
+          );
+        }
+        lastSendTime = Date.now();
+      } catch (err) {
+        // If edit fails, just continue with the text we have
+        console.error("Stream update error:", err.message);
+      }
+    }
+  }
+}
 
 export async function chatgptCommand(sock, chatId, msg) {
   const sender = msg.key.participant || msg.key.remoteJid;
@@ -101,11 +136,8 @@ export async function chatgptCommand(sock, chatId, msg) {
 
     const formattedAnswer = formatAIResponse(answer);
     
-    const finalMessage = `🤖 *ChatGPT Response*
-
-${formattedAnswer}`;
-    
-    await sock.sendMessage(chatId, { text: finalMessage }, { quoted: msg });
+    // Send with streaming animation
+    await streamResponse(sock, chatId, msg, formattedAnswer);
 
   } catch (err) {
     console.error("CHATGPT ERROR:", err.message);
