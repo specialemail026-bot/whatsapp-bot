@@ -5,7 +5,7 @@ const AI_BASE = "https://ef-prime-md-ultra-apis.vercel.app";
 const AI_MODEL = "gpt-5";
 const CHATGPT_HEADER = "[ChatGPT]";
 const CURSOR = "|";
-const TYPING_UPDATE_INTERVAL_MS = 300;
+const TYPING_UPDATE_INTERVAL_MS = 500;
 const WORDS_PER_TICK = 2;
 const MAX_MESSAGE_LENGTH = 3800;
 
@@ -99,22 +99,30 @@ function buildDisplayText(body, showCursor) {
   return `${CHATGPT_HEADER} (${AI_MODEL})\n\n${body}${cursor}`;
 }
 
-async function streamResponse(sock, chatId, msg, fullAnswer) {
+async function streamResponse(sock, chatId, msg, fullAnswer, initialMessage) {
   const parts = splitMessageParts(fullAnswer);
 
   for (let partIndex = 0; partIndex < parts.length; partIndex++) {
     const part = parts[partIndex];
     const frames = buildStreamingFrames(part);
+    let sentMessage;
 
-    let sentMessage = await sock.sendMessage(
-      chatId,
-      { text: buildDisplayText(frames[0], true) },
-      { quoted: partIndex === 0 ? msg : undefined }
-    );
+    if (partIndex === 0 && initialMessage?.key) {
+      sentMessage = initialMessage;
+      await sock.sendMessage(chatId, {
+        text: buildDisplayText(frames[0], true),
+        edit: sentMessage.key,
+      });
+    } else {
+      sentMessage = await sock.sendMessage(
+        chatId,
+        { text: buildDisplayText(frames[0], true) },
+        { quoted: partIndex === 0 ? msg : undefined }
+      );
+    }
 
     for (let i = 1; i < frames.length; i++) {
       try {
-        await sock.sendPresenceUpdate("composing", chatId);
         await delay(TYPING_UPDATE_INTERVAL_MS);
         sentMessage = await sock.sendMessage(chatId, {
           text: buildDisplayText(frames[i], true),
@@ -134,8 +142,6 @@ async function streamResponse(sock, chatId, msg, fullAnswer) {
     } catch (err) {
       console.error("Final stream update error:", err.message);
     }
-
-    await sock.sendPresenceUpdate("paused", chatId);
   }
 }
 
@@ -171,7 +177,7 @@ export async function chatgptCommand(sock, chatId, msg) {
 
     const thinkingMessage = await sock.sendMessage(
       chatId,
-      { text: "Thinking..." },
+      { text: "Generating response..." },
       { quoted: msg }
     );
 
@@ -192,13 +198,7 @@ export async function chatgptCommand(sock, chatId, msg) {
 
     const formattedAnswer = formatAIResponse(answer);
 
-    try {
-      await sock.sendMessage(chatId, { delete: thinkingMessage.key });
-    } catch (deleteErr) {
-      console.error("Thinking message delete error:", deleteErr.message);
-    }
-
-    await streamResponse(sock, chatId, msg, formattedAnswer);
+    await streamResponse(sock, chatId, msg, formattedAnswer, thinkingMessage);
   } catch (err) {
     console.error("CHATGPT ERROR:", err.message);
 
