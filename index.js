@@ -16,6 +16,7 @@ import { docCommand } from "./commands/doc.js";
 import { downloadCommand } from "./commands/download.js";
 import { trendingCommand } from "./commands/trending.js";
 import { addPremium, isPremium } from "./commands/premium.js";
+import { chatgptCommand } from "./commands/chatgpt.js";
 
 import P from "pino";
 import qr from "qr-image";
@@ -258,6 +259,7 @@ _Downloading Made Simple🔥_`
 ┃ 📜 .lyrics (song name)
 ┃ 📌 .help
 ┃ ✅ .status
+  🤖 .chatgpt (ask question)
 ┃ 🔥 .trending
 ┃ ▶️ .ping
 ┗━━━━━━━━━━━━━━━━━━━━━━
@@ -309,6 +311,11 @@ To use the AI privately, pay K1,000 once and use it privately.
     else if (body.startsWith(".play")) {
       const args = body.split(" ").slice(1);
       await playCommand.execute(sock, msg, args);
+    }
+
+    // ===== .chatgpt =====
+    else if (body.startsWith(".ai")) {
+      await chatgptCommand(sock, msg);
     }
 
     // ===== .trending =====
