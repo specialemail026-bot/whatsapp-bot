@@ -43,28 +43,42 @@ function formatAIResponse(answer) {
   return formattedLines.join("\n");
 }
 
-// Send response with simple typing animation
+// Send response with real-time word-by-word typing animation
 async function sendStreamingResponse(sock, chatId, msg, fullText) {
-  // Show loading animation (3 frames)
-  const loadingFrames = ["⏳", "⌛", "⏳"];
-  let loadingMsg = await sock.sendMessage(
-    chatId,
-    { text: `🤖 ${loadingFrames[0]} Typing...` },
-    { quoted: msg }
-  );
+  const header = `🤖 *ChatGPT Response*`;
   
-  // Animate loading indicator for a few frames
-  for (let i = 1; i < loadingFrames.length; i++) {
-    await new Promise(resolve => setTimeout(resolve, 400));
+  const words = fullText.split(" ");
+  let currentMessage = "";
+  let sentMessage = null;
+  
+  // Stream words with animation
+  for (let i = 0; i < words.length; i++) {
+    currentMessage += (i === 0 ? "" : " ") + words[i];
+    
+    // Send/update message every 3 words to reduce message spam
+    if (i % 3 === 2 || i === words.length - 1) {
+      const displayText = header + currentMessage + (i < words.length - 1 ? " ▌" : "");
+      
+      if (!sentMessage) {
+        // Send first message
+        sentMessage = await sock.sendMessage(
+          chatId,
+          { text: displayText },
+          { quoted: msg }
+        );
+      } else {
+        // Update existing message (note: WhatsApp doesn't support real editing, so we send new ones sparingly)
+        await sock.sendMessage(
+          chatId,
+          { text: displayText },
+          { quoted: msg }
+        );
+      }
+    }
+    
+    // Small delay between word additions for typing effect
+    await new Promise(resolve => setTimeout(resolve, 80));
   }
-  
-  // Send the final complete response (only once)
-  const header = `╔═══════════════════════════\n║ 🤖 *ChatGPT Response*\n╚═══════════════════════════\n\n`;
-  await sock.sendMessage(
-    chatId,
-    { text: header + fullText },
-    { quoted: msg }
-  );
 }
  
 
