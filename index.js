@@ -314,8 +314,8 @@ To use the AI privately, pay K1,000 once and use it privately.
     }
 
     // ===== .chatgpt =====
-    else if (body.startsWith(".ai")) {
-      await chatgptCommand(sock, msg);
+    else if (body.startsWith(".chatgpt")) {
+      await chatgptCommand(sock, chatId, msg);
     }
 
     // ===== .trending =====
