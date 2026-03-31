@@ -2,8 +2,8 @@ import axios from "axios";
 import { checkLimitOrPremium } from "./premium.js";
 
 const AI_BASE = "https://ef-prime-md-ultra-apis.vercel.app";
-const AI_MODEL = "gpt-5";
-const CHATGPT_HEADER = "[ChatGPT]";
+//const AI_MODEL = "gpt-5";
+const CHATGPT_HEADER = "🤖ChatGPT response";
 const CURSOR = "|";
 const TYPING_UPDATE_INTERVAL_MS = 500;
 const WORDS_PER_TICK = 2;
@@ -96,7 +96,7 @@ function buildStreamingFrames(text) {
 
 function buildDisplayText(body, showCursor) {
   const cursor = showCursor ? CURSOR : "";
-  return `${CHATGPT_HEADER} (${AI_MODEL})\n\n${body}${cursor}`;
+  return `${CHATGPT_HEADER}\n\n${body}${cursor}`;
 }
 
 async function streamResponse(sock, chatId, msg, fullAnswer, initialMessage) {
