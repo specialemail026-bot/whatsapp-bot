@@ -42,6 +42,20 @@ function formatAIResponse(answer) {
   
   return formattedLines.join("\n");
 }
+
+// Simulate typing effect with animated dots
+async function sendTypingEffect(sock, chatId, msg, delayMs = 800) {
+  const dots = ["⏳", "⏳ .", "⏳ ..", "⏳ ..."];
+  
+  for (const dot of dots) {
+    await sock.sendMessage(
+      chatId,
+      { text: `🤖 ChatGPT is typing${dot}` },
+      { quoted: msg }
+    );
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+  }
+}
  
 
 export async function chatgptCommand(sock, chatId, msg) {
@@ -74,11 +88,8 @@ export async function chatgptCommand(sock, chatId, msg) {
       );
     }
 
-    await sock.sendMessage(
-      chatId,
-      { text: "⏳ Thinking..." },
-      { quoted: msg }
-    );
+    // Show typing animation effect
+    await sendTypingEffect(sock, chatId, msg, 600);
 
     const url = `${AI_BASE}/ai/copilot?message=${encodeURIComponent(message)}&model=${AI_MODEL}`;
 
@@ -98,9 +109,8 @@ export async function chatgptCommand(sock, chatId, msg) {
 
     const formattedAnswer = formatAIResponse(answer);
     
-    const finalMessage = `╔═══════════════════════════
-║ 🤖 *ChatGPT Response*
-╚═══════════════════════════
+    const finalMessage = `
+ 🤖 *ChatGPT Response*
 
 ${formattedAnswer}`;
 
