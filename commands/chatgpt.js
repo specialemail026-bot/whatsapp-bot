@@ -43,17 +43,53 @@ function formatAIResponse(answer) {
   return formattedLines.join("\n");
 }
 
-// Simulate typing effect with animated dots
-async function sendTypingEffect(sock, chatId, msg, delayMs = 800) {
-  const dots = ["⏳", "⏳ .", "⏳ ..", "⏳ ..."];
+// Send response with streaming/typing effect (word by word)
+async function sendStreamingResponse(sock, chatId, msg, fullText) {
+  // Split into words
+  const words = fullText.split(" ");
+  const header = `🤖 *ChatGPT Response*\n\n`;
   
-  for (const dot of dots) {
-    await sock.sendMessage(
-      chatId,
-      { text: `🤖 ChatGPT is typing${dot}` },
-      { quoted: msg }
-    );
-    await new Promise(resolve => setTimeout(resolve, delayMs));
+  // Send initial message
+  let sentMessage = await sock.sendMessage(
+    chatId,
+    { text: header + words[0] },
+    { quoted: msg }
+  );
+  
+  // Get message ID for editing
+  const messageId = sentMessage.key.id;
+  
+  // Progressively add words
+  let currentText = words[0];
+  for (let i = 1; i < words.length; i++) {
+    currentText += " " + words[i];
+    
+    try {
+      // Edit the message with more content
+      await sock.relayMessage(
+        chatId,
+        {
+          protocolMessage: {
+            key: sentMessage.key,
+            type: "REVOKE"
+          }
+        },
+        {}
+      );
+      
+      // Delete and resend with updated content (simpler approach)
+      await sock.sendMessage(
+        chatId,
+        { text: header + currentText },
+        { quoted: msg }
+      );
+    } catch (e) {
+      // If edit fails, just continue
+      console.log("Stream update skipped:", e.message);
+    }
+    
+    // Small delay between words (adjust for faster/slower typing)
+    await new Promise(resolve => setTimeout(resolve, 50));
   }
 }
  
@@ -88,8 +124,12 @@ export async function chatgptCommand(sock, chatId, msg) {
       );
     }
 
-    // Show typing animation effect
-    await sendTypingEffect(sock, chatId, msg, 600);
+    // Send thinking indicator
+    await sock.sendMessage(
+      chatId,
+      { text: "⏳ Generating response..." },
+      { quoted: msg }
+    );
 
     const url = `${AI_BASE}/ai/copilot?message=${encodeURIComponent(message)}&model=${AI_MODEL}`;
 
@@ -109,12 +149,8 @@ export async function chatgptCommand(sock, chatId, msg) {
 
     const formattedAnswer = formatAIResponse(answer);
     
-    const finalMessage = `
- 🤖 *ChatGPT Response*
-
-${formattedAnswer}`;
-
-    await sock.sendMessage(chatId, { text: finalMessage }, { quoted: msg });
+    // Send with streaming/typing effect
+    await sendStreamingResponse(sock, chatId, msg, formattedAnswer);
 
   } catch (err) {
     console.error("CHATGPT ERROR:", err.message);
