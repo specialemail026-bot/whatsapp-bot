@@ -43,54 +43,28 @@ function formatAIResponse(answer) {
   return formattedLines.join("\n");
 }
 
-// Send response with streaming/typing effect (word by word)
+// Send response with simple typing animation
 async function sendStreamingResponse(sock, chatId, msg, fullText) {
-  // Split into words
-  const words = fullText.split(" ");
-  const header = `🤖 *ChatGPT Response*\n\n`;
-  
-  // Send initial message
-  let sentMessage = await sock.sendMessage(
+  // Show loading animation (3 frames)
+  const loadingFrames = ["⏳", "⌛", "⏳"];
+  let loadingMsg = await sock.sendMessage(
     chatId,
-    { text: header + words[0] },
+    { text: `🤖 ${loadingFrames[0]} Typing...` },
     { quoted: msg }
   );
   
-  // Get message ID for editing
-  const messageId = sentMessage.key.id;
-  
-  // Progressively add words
-  let currentText = words[0];
-  for (let i = 1; i < words.length; i++) {
-    currentText += " " + words[i];
-    
-    try {
-      // Edit the message with more content
-      await sock.relayMessage(
-        chatId,
-        {
-          protocolMessage: {
-            key: sentMessage.key,
-            type: "REVOKE"
-          }
-        },
-        {}
-      );
-      
-      // Delete and resend with updated content (simpler approach)
-      await sock.sendMessage(
-        chatId,
-        { text: header + currentText },
-        { quoted: msg }
-      );
-    } catch (e) {
-      // If edit fails, just continue
-      console.log("Stream update skipped:", e.message);
-    }
-    
-    // Small delay between words (adjust for faster/slower typing)
-    await new Promise(resolve => setTimeout(resolve, 50));
+  // Animate loading indicator for a few frames
+  for (let i = 1; i < loadingFrames.length; i++) {
+    await new Promise(resolve => setTimeout(resolve, 400));
   }
+  
+  // Send the final complete response (only once)
+  const header = `╔═══════════════════════════\n║ 🤖 *ChatGPT Response*\n╚═══════════════════════════\n\n`;
+  await sock.sendMessage(
+    chatId,
+    { text: header + fullText },
+    { quoted: msg }
+  );
 }
  
 
