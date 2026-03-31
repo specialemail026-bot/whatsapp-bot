@@ -102,10 +102,7 @@ export async function chatgptCommand(sock, chatId, msg) {
 ║ 🤖 *ChatGPT Response*
 ╚═══════════════════════════
 
-${formattedAnswer}
-
-━━━━━━━━━━━━━━━━━━━━━━━
-✨ Powered by Webs AI`;
+${formattedAnswer}`;
 
     await sock.sendMessage(chatId, { text: finalMessage }, { quoted: msg });
 
