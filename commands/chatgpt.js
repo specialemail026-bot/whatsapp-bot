@@ -5,8 +5,8 @@ const AI_BASE = "https://ef-prime-md-ultra-apis.vercel.app";
 const AI_MODEL = "gpt-5";
 const CHATGPT_HEADER = "🤖ChatGPT response";
 const CURSOR = "|";
-const TYPING_UPDATE_INTERVAL_MS = 500;
-const WORDS_PER_TICK = 5;
+const TYPING_UPDATE_INTERVAL_MS = 40;
+const CHARS_PER_TICK = 18;
 const MAX_MESSAGE_LENGTH = 3800;
 
 function delay(ms) {
@@ -74,17 +74,16 @@ function splitMessageParts(text, maxLength = MAX_MESSAGE_LENGTH) {
 }
 
 function buildStreamingFrames(text) {
-  const tokens = text.match(/\S+\s*/g) || [];
-  if (tokens.length === 0) {
+  if (!text) {
     return [""];
   }
 
   const frames = [];
   let current = "";
 
-  for (let i = 0; i < tokens.length; i += WORDS_PER_TICK) {
-    current += tokens.slice(i, i + WORDS_PER_TICK).join("");
-    frames.push(current.trimEnd());
+  for (let i = 0; i < text.length; i += CHARS_PER_TICK) {
+    current += text.slice(i, i + CHARS_PER_TICK);
+    frames.push(current);
   }
 
   if (frames[frames.length - 1] !== text) {
