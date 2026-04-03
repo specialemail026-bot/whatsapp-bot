@@ -201,35 +201,33 @@ if (greetings.some(g => normalized.startsWith(g))) {
 *Tsatirani izi👇 kuti mudziwe momwe mungagwiritsire ntchito Webs AI:*
 
 🎵 ngat mukufuna nyimbo, lemban chochi👇
-
 *.song (dzina la nyimbo)*
 
 🎬 ngat mukufuna video, lemban chochi👇
-
 *.video (dzina la video)*
 
-📱 ngat mukufuna ma videos apa  tiktok, fb or IG, lemban chochi👇
-
+📱 ngat mukufuna ma videos apa  tiktok, fb or IG, 👇lemban chochi
 *.short (paste video link here)*
 
-🤖ngat mukufuna kulankhulana ndi chatgpt👇
+🤖 ngat mukufuna kulankhulana ndi chatgpt👇
 *.chatgpt (lemban fuso apa)*
 
 📚 ngat mukufuna ma books, lemban chochi👇
-
 *.doc (paste document link here)*
 
 📝 ngat mukufuna ma lyrics, lemban chochi👇
-
 *.lyrics (dzina la nyimbo)*
 
 📋 kut muone ma commands onse👇
-
 *.help*
 
-*Note: _osaiwala full stop koyambilirako kmaso Onetsetsan🧐 kut ma brackets mukuchotsa._*
+*Note: Osaiwala full stop koyambilirako kmaso Onetsetsan🧐 kut ma brackets mukuchotsa.*
 
-_Downloading Made Simple🔥_`
+*Contact any of these admins for premium access and unlimited downloads:*
+📞 0995551995
+📞 0886219577
+📞 0993702468
+      `
   }, { quoted: msg });
 
   return;
