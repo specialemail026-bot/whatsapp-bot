@@ -212,6 +212,9 @@ if (greetings.some(g => normalized.startsWith(g))) {
 
 *.short (paste video link here)*
 
+🤖ngat mukufuna kulankhulana ndi chatgpt👇
+*.chatgpt (lemban fuso apa)*
+
 📚 ngat mukufuna ma books, lemban chochi👇
 
 *.doc (paste document link here)*
@@ -259,7 +262,7 @@ _Downloading Made Simple🔥_`
 ┃ 📜 .lyrics (song name)
 ┃ 📌 .help
 ┃ ✅ .status
-  🤖 .chatgpt (ask question)
+┃ 🤖 .chatgpt (ask question)
 ┃ 🔥 .trending
 ┃ ▶️ .ping
 ┗━━━━━━━━━━━━━━━━━━━━━━

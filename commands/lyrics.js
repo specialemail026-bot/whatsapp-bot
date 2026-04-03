@@ -84,7 +84,7 @@ export async function lyricsCommand(sock, chatId, msg) {
       : cleanedLyrics;
 
     // Add footer
-    const finalMessage = `📄 *Lyrics: ${song} - ${artist}*\n\n${trimmedLyrics}\n\n━━━━━━━━\nPowered by FRANKKAUMBADEV`;
+    const finalMessage = `📄 *Lyrics: ${song} - ${artist}*\n\n${trimmedLyrics}`;
     await sock.sendMessage(chatId, {
       text: finalMessage
     }, { quoted: msg });
