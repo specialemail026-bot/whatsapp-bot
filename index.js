@@ -24,6 +24,8 @@ import fs from "fs";
 import { join } from "path";
 import qrcode from "qrcode-terminal";
 
+const blockedCountryCodes = ["234", "91", "62"]; // Nigeria, India, Indonesia
+
 /* ===========================
    GLOBAL CRASH PROTECTION
    =========================== */
@@ -125,6 +127,29 @@ async function startSock() {
       }
     }
   });
+
+  /* ===========================
+   BLOCK +234 ON GROUP JOIN
+   =========================== */
+sock.ev.on("group-participants.update", async (update) => {
+  try {
+    const number = user.split("@")[0];
+
+const isBlocked = blockedCountryCodes.some(code => number.startsWith(code));
+
+if (isBlocked) {
+  console.log("🚫 Blocking user:", number);
+
+  await sock.groupParticipantsUpdate(id, [user], "remove");
+
+  await sock.sendMessage(id, {
+    text: `🚫 User removed automatically.\nReason: *Region not supported.*`
+  });
+}
+  } catch (err) {
+    console.error("BLOCK JOIN ERROR:", err);
+  }
+});
 
   /* ===========================
    WELCOME COOLDOWN STORE
