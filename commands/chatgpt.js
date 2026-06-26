@@ -149,7 +149,7 @@ export async function chatgptCommand(sock, chatId, msg) {
 
   console.log("CHATGPT command - Sender JID:", sender);
 
-  if (!checkLimitOrPremium(sender, "Chatgpt")) {
+  if (!(await checkLimitOrPremium(sender, "chatgpt"))) {
     return sock.sendMessage(
       chatId,
       {

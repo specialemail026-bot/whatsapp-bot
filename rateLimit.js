@@ -8,6 +8,7 @@ const FREE_LIMITS = {
   play: 4,
   download: 4,
   song_cmd: 4,
+  chatgpt: 4,
   lyrics: 4,
   short: 4,
   instagram: 4,
@@ -17,6 +18,50 @@ const FREE_LIMITS = {
   song_legacy: 3,
   video_legacy: 2
 };
+
+let dbInitAttempted = false;
+let dbPool = null;
+
+function toUserId(jid) {
+  if (!jid) return "";
+  return String(jid).trim().split("@")[0].split(":")[0];
+}
+
+async function getDbPool() {
+  if (dbInitAttempted) return dbPool;
+  dbInitAttempted = true;
+
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    console.log("DATABASE_URL not set. Using JSON usage store.");
+    return null;
+  }
+
+  try {
+    const { Pool } = await import("pg");
+    dbPool = new Pool({
+      connectionString,
+      ssl: process.env.PGSSL === "false" ? false : { rejectUnauthorized: false }
+    });
+
+    await dbPool.query(`
+      CREATE TABLE IF NOT EXISTS usage_limits (
+        jid TEXT NOT NULL,
+        command_type TEXT NOT NULL,
+        count INTEGER NOT NULL DEFAULT 0,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (jid, command_type)
+      );
+    `);
+
+    console.log("Postgres usage store ready.");
+    return dbPool;
+  } catch (err) {
+    console.error("Failed to initialize Postgres usage store, falling back to JSON:", err?.message || err);
+    dbPool = null;
+    return null;
+  }
+}
 
 function loadUsage() {
   try {
@@ -40,7 +85,7 @@ function saveUsage(usage) {
   }
 }
 
-export function checkAndIncrementLimit(senderJid, type) {
+function checkAndIncrementJsonLimit(senderJid, type) {
   // Track usage per-sender (user JID), lifetime by command key.
   const usage = loadUsage();
 
@@ -74,4 +119,35 @@ export function checkAndIncrementLimit(senderJid, type) {
   userUsage.counts[type] = current + 1;
   saveUsage(usage);
   return true;
+}
+
+export async function checkAndIncrementLimit(senderJid, type) {
+  const limit = FREE_LIMITS[type] ?? 1;
+  const senderId = toUserId(senderJid);
+  if (!senderId) return false;
+
+  const pool = await getDbPool();
+  if (pool) {
+    try {
+      const result = await pool.query(
+        `
+        INSERT INTO usage_limits (jid, command_type, count)
+        VALUES ($1, $2, 1)
+        ON CONFLICT (jid, command_type)
+        DO UPDATE SET
+          count = usage_limits.count + 1,
+          updated_at = NOW()
+        WHERE usage_limits.count < $3
+        RETURNING count
+        `,
+        [senderId, type, limit]
+      );
+
+      return result.rowCount > 0;
+    } catch (err) {
+      console.error("Postgres usage check failed, using JSON fallback:", err?.message || err);
+    }
+  }
+
+  return checkAndIncrementJsonLimit(senderJid, type);
 }

@@ -189,5 +189,5 @@ export async function checkLimitOrPremium(sender, type) {
 
   // Everyone else is rate-limited
   console.log("📊 Applying rate limit for:", sender);
-  return checkAndIncrementLimit(sender, type);
+  return await checkAndIncrementLimit(sender, type);
 }
