@@ -2,8 +2,6 @@ import yts from "yt-search";
 import fs from "fs";
 import path from "path";
 import axios from "axios";
-import { spawn } from "child_process";
-import ffmpegPath from "ffmpeg-static";
 import { checkLimitOrPremium } from "./premium.js";
 
 export async function videoCommand(sock, chatId, msg) {
@@ -44,7 +42,6 @@ export async function videoCommand(sock, chatId, msg) {
 
     const safeTitle = video.title.replace(/[^\w\s]/gi, "").substring(0, 50);
     const inputPath = path.join("tmp", `${Date.now()}-${safeTitle}-input`);
-    const outputPath = path.join("tmp", `${Date.now()}-${safeTitle}.mp4`);
 
     await sock.sendMessage(chatId, {
       text: `🎬 Downloading video:\n*${video.title}*\n⏱️ Duration: ${video.duration?.timestamp || 'Unknown'}\n👀 Views: ${video.views?.toLocaleString() || 'Unknown'}\n\n⏳ Please wait...`
@@ -69,10 +66,11 @@ export async function videoCommand(sock, chatId, msg) {
 
     const videoData = apiResponse.data.answer;
     
-    // Prefer HD, fallback to regular video_url
-    const downloadUrl = videoData.video_url_hd !== "No SD video URL available" 
-      ? videoData.video_url_hd 
-      : videoData.video_url;
+    // Prefer the ready MP4 URL. Re-encoding video with ffmpeg is too heavy for
+    // small Railway instances and can crash the command.
+    const downloadUrl =
+      videoData.video_url ||
+      (videoData.video_url_hd !== "No SD video URL available" ? videoData.video_url_hd : null);
 
     if (!downloadUrl) {
       return sock.sendMessage(chatId, {
@@ -102,8 +100,8 @@ export async function videoCommand(sock, chatId, msg) {
 
     const stats = fs.statSync(inputPath);
 
-    // WhatsApp limit guard (~200MB)
-    if (stats.size > 295 * 1024 * 1024) {
+    // WhatsApp/Railway free-tier guard.
+    if (stats.size > 95 * 1024 * 1024) {
       if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
       return sock.sendMessage(chatId, {
         text: "⚠️ Video too large for WhatsApp.\nTry a shorter video."
@@ -112,50 +110,16 @@ export async function videoCommand(sock, chatId, msg) {
 
     console.log("✅ Video downloaded successfully, size:", stats.size);
 
-    // Normalize source to WhatsApp-friendly MP4 (H.264 video + AAC audio).
-    await new Promise((resolve, reject) => {
-      const ff = spawn(ffmpegPath, [
-        "-y",
-        "-i", inputPath,
-        "-c:v", "libx264",
-        "-preset", "veryfast",
-        "-crf", "23",
-        "-c:a", "aac",
-        "-b:a", "128k",
-        "-movflags", "+faststart",
-        outputPath
-      ]);
-
-      let ffErr = "";
-      ff.stderr.on("data", (d) => {
-        ffErr += d.toString();
-      });
-      ff.on("close", (code) => {
-        if (code === 0) return resolve();
-        reject(new Error(`ffmpeg failed (${code}): ${ffErr}`));
-      });
-      ff.on("error", reject);
-    });
-
-    const outStats = fs.statSync(outputPath);
-    if (outStats.size > 95 * 1024 * 1024) {
-      if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
-      if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
-      return sock.sendMessage(chatId, {
-        text: "⚠️ Converted video is too large for WhatsApp.\nTry a shorter video."
-      }, { quoted: msg });
-    }
-
-    // Send as document to preserve downloadable file with correct codec/container.
+    // Send as document to preserve downloadable file and avoid local video
+    // transcoding on memory-limited hosts.
     await sock.sendMessage(chatId, {
-      document: fs.readFileSync(outputPath),
+      document: fs.readFileSync(inputPath),
       mimetype: "video/mp4",
       fileName: `${videoData.title || video.title}.mp4`,
       caption: `🎬 ${videoData.title || video.title}`
     }, { quoted: msg });
 
     if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
-    if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
 
   } catch (e) {
     console.error("VIDEO ERROR:", e);
