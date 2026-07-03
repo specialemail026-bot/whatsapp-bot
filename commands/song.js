@@ -8,6 +8,7 @@ import { checkLimitOrPremium } from "./premium.js";
 
 const TMP_DIR = "tmp";
 const MIN_AUDIO_BYTES = 1024;
+const DOWNLOAD_TIMEOUT_MS = 180000;
 
 if (!fs.existsSync(TMP_DIR)) {
   fs.mkdirSync(TMP_DIR);
@@ -17,55 +18,7 @@ function safeFileName(title) {
   return (title || "song").replace(/[^\w\s.-]/g, "").substring(0, 80) || "song";
 }
 
-async function streamAudioToMp3(videoUrl) {
-  const ytDlpProcess = spawn('yt-dlp', [
-    videoUrl,
-    '-f', 'bestaudio/best',
-    '-o', '-',
-    '--quiet',
-    '--no-warnings',
-    '--no-playlist'
-  ]);
-
-  const ffmpegProcess = spawn(ffmpegPath, [
-    '-i', 'pipe:0',
-    '-vn',
-    '-c:a', 'libmp3lame',
-    '-b:a', '128k',
-    '-ar', '44100',
-    '-f', 'mp3',
-    'pipe:1'
-  ]);
-
-  let stderr = '';
-  ytDlpProcess.stderr?.on('data', (d) => {
-    stderr += d.toString();
-  });
-  ffmpegProcess.stderr?.on('data', (d) => {
-    stderr += d.toString();
-  });
-
-  ytDlpProcess.stdout.pipe(ffmpegProcess.stdin);
-
-  const chunks = [];
-  for await (const chunk of ffmpegProcess.stdout) {
-    chunks.push(chunk);
-  }
-
-  const [ytCode, ffCode] = await Promise.all([
-    new Promise((resolve) => ytDlpProcess.on('close', resolve)),
-    new Promise((resolve) => ffmpegProcess.on('close', resolve))
-  ]);
-
-  const audioBuffer = Buffer.concat(chunks);
-  if (ytCode !== 0 || ffCode !== 0 || audioBuffer.length < MIN_AUDIO_BYTES) {
-    throw new Error(`stream pipeline failed (yt-dlp=${ytCode}, ffmpeg=${ffCode}, bytes=${audioBuffer.length}): ${stderr}`);
-  }
-
-  return audioBuffer;
-}
-
-async function downloadAudioFile(videoUrl, outputPath) {
+async function downloadAudioFile(videoUrl, outputTemplate, finalPath) {
   await new Promise((resolve, reject) => {
     const ytdlp = spawn('yt-dlp', [
       '-x',
@@ -75,18 +28,27 @@ async function downloadAudioFile(videoUrl, outputPath) {
       '--no-playlist',
       '--quiet',
       '--no-warnings',
-      '-o', outputPath,
+      '-o', outputTemplate,
       videoUrl
     ]);
+
+    const timer = setTimeout(() => {
+      ytdlp.kill("SIGKILL");
+      reject(new Error(`yt-dlp timed out after ${DOWNLOAD_TIMEOUT_MS}ms`));
+    }, DOWNLOAD_TIMEOUT_MS);
 
     let stderr = '';
     ytdlp.stderr?.on('data', (d) => {
       stderr += d.toString();
     });
-    ytdlp.on('error', reject);
+    ytdlp.on('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
     ytdlp.on('close', (code) => {
-      if (code === 0 && fs.existsSync(outputPath)) return resolve();
-      reject(new Error(`yt-dlp file fallback failed (${code}): ${stderr}`));
+      clearTimeout(timer);
+      if (code === 0 && fs.existsSync(finalPath)) return resolve();
+      reject(new Error(`yt-dlp file download failed (${code}): ${stderr}`));
     });
   });
 }
@@ -114,21 +76,18 @@ export default {
       await sock.sendMessage(from, {  text: `⏳ Downloading: *${video.title}*\n⏱️ Duration: ${video.duration?.timestamp || 'Unknown'}\n👀 Views: ${video.views?.toLocaleString() || 'Unknown'}` }, { quoted: msg });
 
       let audioBuffer;
+      const outputBase = path.join(TMP_DIR, `${Date.now()}-${safeFileName(video.title)}`);
+      const outputTemplate = `${outputBase}.%(ext)s`;
+      const outputPath = `${outputBase}.mp3`;
       try {
-        audioBuffer = await streamAudioToMp3(video.url);
-      } catch (streamError) {
-        console.error("SONG stream pipeline failed, trying file fallback:", streamError?.message || streamError);
-        const fallbackPath = path.join(TMP_DIR, `${Date.now()}-${safeFileName(video.title)}.mp3`);
-        try {
-          await downloadAudioFile(video.url, fallbackPath);
-          audioBuffer = fs.readFileSync(fallbackPath);
-        } finally {
-          if (fs.existsSync(fallbackPath)) fs.unlinkSync(fallbackPath);
-        }
+        await downloadAudioFile(video.url, outputTemplate, outputPath);
+        audioBuffer = fs.readFileSync(outputPath);
+      } finally {
+        if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+      }
 
-        if (audioBuffer.length < MIN_AUDIO_BYTES) {
-          throw new Error(`file fallback produced an invalid audio file (${audioBuffer.length} bytes)`);
-        }
+      if (audioBuffer.length < MIN_AUDIO_BYTES) {
+        throw new Error(`song download produced an invalid audio file (${audioBuffer.length} bytes)`);
       }
 
       await sock.sendMessage(from, {
