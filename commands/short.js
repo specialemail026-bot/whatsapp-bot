@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
 import ffmpegPath from "ffmpeg-static";
+import { igdl } from "ruhend-scraper";
 import { checkLimitOrPremium } from "./premium.js";
 
 function isUrl(text) {
@@ -24,6 +25,23 @@ function getFormat(platform) {
 
   // Shorts platforms use progressive MP4
   return "best";
+}
+
+async function sendInstagramShort(sock, chatId, msg, url) {
+  const downloadData = await igdl(url);
+  const media = Array.isArray(downloadData?.data)
+    ? downloadData.data.find((item) => item?.url)
+    : null;
+
+  if (!media?.url) {
+    throw new Error("No Instagram media URL returned.");
+  }
+
+  await sock.sendMessage(chatId, {
+    video: { url: media.url },
+    mimetype: "video/mp4",
+    caption: "📱 INSTAGRAM Video"
+  }, { quoted: msg });
 }
 
 export async function shortCommand(sock, chatId, msg) {
@@ -62,6 +80,15 @@ export async function shortCommand(sock, chatId, msg) {
     await sock.sendMessage(chatId, {
       text: `📥 Downloading ${platform.toUpperCase()} short...\n⏳ Please wait`
     }, { quoted: msg });
+
+    if (platform === "instagram") {
+      try {
+        await sendInstagramShort(sock, chatId, msg, url);
+        return;
+      } catch (igErr) {
+        console.error("Instagram scraper failed, trying yt-dlp fallback:", igErr?.message || igErr);
+      }
+    }
 
     const args = [
       "-f", format,

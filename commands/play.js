@@ -14,6 +14,74 @@ if (!fs.existsSync(TMP_DIR)) {
   fs.mkdirSync(TMP_DIR);
 }
 
+async function convertToMp3(inputPath, outputPath) {
+  await new Promise((resolve, reject) => {
+    const ff = spawn(ffmpegPath, [
+      "-y",
+      "-i", inputPath,
+      "-vn",
+      "-c:a", "libmp3lame",
+      "-b:a", "192k",
+      "-ar", "44100",
+      outputPath
+    ]);
+
+    let ffErr = "";
+    ff.stderr.on("data", (d) => {
+      ffErr += d.toString();
+    });
+    ff.on("close", (code) => {
+      if (code === 0) return resolve();
+      reject(new Error(`ffmpeg failed (${code}): ${ffErr}`));
+    });
+    ff.on("error", reject);
+  });
+}
+
+async function downloadAudioWithApi(videoUrl, inputPath) {
+  const downloadUrl = `https://ef-prime-md-ultra-apis.vercel.app/downloader/ytdlv2?url=${encodeURIComponent(videoUrl)}&format=audio`;
+  const downloadResponse = await axios.get(downloadUrl, { timeout: 60000 });
+
+  if (!downloadResponse.data?.answer?.status || !downloadResponse.data?.answer?.audio_url) {
+    throw new Error("Audio API did not return a usable download URL.");
+  }
+
+  const audioResponse = await axios.get(downloadResponse.data.answer.audio_url, {
+    responseType: "arraybuffer",
+    timeout: 120000,
+    maxContentLength: 95 * 1024 * 1024,
+    maxBodyLength: 95 * 1024 * 1024
+  });
+
+  fs.writeFileSync(inputPath, Buffer.from(audioResponse.data));
+}
+
+async function downloadAudioWithYtDlp(videoUrl, outputPath) {
+  await new Promise((resolve, reject) => {
+    const ytdlp = spawn("yt-dlp", [
+      "-x",
+      "--audio-format", "mp3",
+      "--audio-quality", "0",
+      "--ffmpeg-location", ffmpegPath,
+      "--no-playlist",
+      "--quiet",
+      "--no-warnings",
+      "-o", outputPath,
+      videoUrl
+    ]);
+
+    let stderr = "";
+    ytdlp.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+    ytdlp.on("error", reject);
+    ytdlp.on("close", (code) => {
+      if (code === 0 && fs.existsSync(outputPath)) return resolve();
+      reject(new Error(`yt-dlp audio failed (${code}): ${stderr}`));
+    });
+  });
+}
+
 async function execute(sock, msg, args) {
   const chatId = msg.key.remoteJid;
   const sender = msg.key.participant || msg.key.remoteJid;
@@ -77,46 +145,15 @@ async function execute(sock, msg, args) {
       { quoted: msg }
     );
 
-    const downloadUrl = `https://ef-prime-md-ultra-apis.vercel.app/downloader/ytdlv2?url=${encodeURIComponent(video.url)}&format=audio`;
-    const downloadResponse = await axios.get(downloadUrl);
-
-    if (!downloadResponse.data.answer.status) {
-      activeChats.delete(chatId);
-      return sock.sendMessage(
-        chatId,
-        { text: "❌ Download failed. Try again." },
-        { quoted: msg }
-      );
+    try {
+      await downloadAudioWithApi(video.url, inputPath);
+      await convertToMp3(inputPath, outputPath);
+    } catch (apiErr) {
+      console.error("PLAY API download failed, trying yt-dlp fallback:", apiErr?.code || apiErr?.message || apiErr);
+      if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+      if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+      await downloadAudioWithYtDlp(video.url, outputPath);
     }
-
-    const audioUrl = downloadResponse.data.answer.audio_url;
-    const audioResponse = await axios.get(audioUrl, { responseType: "arraybuffer" });
-    const buffer = Buffer.from(audioResponse.data);
-
-    fs.writeFileSync(inputPath, buffer);
-
-    // Normalize source audio to mp3 so file extension/mimetype always match payload.
-    await new Promise((resolve, reject) => {
-      const ff = spawn(ffmpegPath, [
-        "-y",
-        "-i", inputPath,
-        "-vn",
-        "-c:a", "libmp3lame",
-        "-b:a", "192k",
-        "-ar", "44100",
-        outputPath
-      ]);
-
-      let ffErr = "";
-      ff.stderr.on("data", (d) => {
-        ffErr += d.toString();
-      });
-      ff.on("close", (code) => {
-        if (code === 0) return resolve();
-        reject(new Error(`ffmpeg failed (${code}): ${ffErr}`));
-      });
-      ff.on("error", reject);
-    });
 
     const audioBuffer = fs.readFileSync(outputPath);
 
