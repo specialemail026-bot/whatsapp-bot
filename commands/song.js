@@ -2,6 +2,7 @@ import yts from 'yt-search';
 import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import axios from 'axios';
 // Import from your package.json
 import { path as ffmpegPath } from '@ffmpeg-installer/ffmpeg'; 
 import { checkLimitOrPremium } from "./premium.js";
@@ -16,6 +17,48 @@ if (!fs.existsSync(TMP_DIR)) {
 
 function safeFileName(title) {
   return (title || "song").replace(/[^\w\s.-]/g, "").substring(0, 80) || "song";
+}
+
+async function convertToMp3(inputPath, outputPath) {
+  await new Promise((resolve, reject) => {
+    const ff = spawn(ffmpegPath, [
+      "-y",
+      "-i", inputPath,
+      "-vn",
+      "-c:a", "libmp3lame",
+      "-b:a", "192k",
+      "-ar", "44100",
+      outputPath
+    ]);
+
+    let ffErr = "";
+    ff.stderr.on("data", (d) => {
+      ffErr += d.toString();
+    });
+    ff.on("close", (code) => {
+      if (code === 0) return resolve();
+      reject(new Error(`ffmpeg failed (${code}): ${ffErr}`));
+    });
+    ff.on("error", reject);
+  });
+}
+
+async function downloadAudioWithApi(videoUrl, inputPath) {
+  const downloadUrl = `https://ef-prime-md-ultra-apis.vercel.app/downloader/ytdlv2?url=${encodeURIComponent(videoUrl)}&format=audio`;
+  const downloadResponse = await axios.get(downloadUrl, { timeout: 60000 });
+
+  if (!downloadResponse.data?.answer?.status || !downloadResponse.data?.answer?.audio_url) {
+    throw new Error("Audio API did not return a usable download URL.");
+  }
+
+  const audioResponse = await axios.get(downloadResponse.data.answer.audio_url, {
+    responseType: "arraybuffer",
+    timeout: 120000,
+    maxContentLength: 95 * 1024 * 1024,
+    maxBodyLength: 95 * 1024 * 1024
+  });
+
+  fs.writeFileSync(inputPath, Buffer.from(audioResponse.data));
 }
 
 async function downloadAudioFile(videoUrl, outputTemplate, finalPath) {
@@ -77,12 +120,22 @@ export default {
 
       let audioBuffer;
       const outputBase = path.join(TMP_DIR, `${Date.now()}-${safeFileName(video.title)}`);
+      const inputPath = `${outputBase}-input`;
       const outputTemplate = `${outputBase}.%(ext)s`;
       const outputPath = `${outputBase}.mp3`;
       try {
-        await downloadAudioFile(video.url, outputTemplate, outputPath);
+        try {
+          await downloadAudioWithApi(video.url, inputPath);
+          await convertToMp3(inputPath, outputPath);
+        } catch (apiError) {
+          console.error("SONG API download failed, trying yt-dlp fallback:", apiError?.code || apiError?.message || apiError);
+          if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+          if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+          await downloadAudioFile(video.url, outputTemplate, outputPath);
+        }
         audioBuffer = fs.readFileSync(outputPath);
       } finally {
+        if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
         if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
       }
 
