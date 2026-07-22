@@ -25,10 +25,18 @@ import { join } from "path";
 import qrcode from "qrcode-terminal";
 
 const blockedCountryCodes = ["234", "91", "62"]; // Nigeria, India, Indonesia
-const COMMAND_RESPONSE_DELAY_MS = Number(process.env.COMMAND_RESPONSE_DELAY_MS || 20000);
+const COMMAND_RESPONSE_DELAY_MIN_MS = Number(process.env.COMMAND_RESPONSE_DELAY_MIN_MS || 12000);
+const COMMAND_RESPONSE_DELAY_MAX_MS = Number(process.env.COMMAND_RESPONSE_DELAY_MAX_MS || 30000);
+const USER_COMMAND_COOLDOWN_MS = Number(process.env.USER_COMMAND_COOLDOWN_MS || 60000);
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function randomCommandDelayMs() {
+  const min = Math.max(0, COMMAND_RESPONSE_DELAY_MIN_MS);
+  const max = Math.max(min, COMMAND_RESPONSE_DELAY_MAX_MS);
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 /* ===========================
@@ -160,6 +168,7 @@ if (isBlocked) {
    WELCOME COOLDOWN STORE
    =========================== */
 const welcomeCooldown = new Map();
+const userCommandCooldown = new Map();
 
 /*
 Key   → sender JID
@@ -263,9 +272,28 @@ if (greetings.some(g => normalized.startsWith(g))) {
   return;
 }
 
-if (body.startsWith(".") && COMMAND_RESPONSE_DELAY_MS > 0) {
-  console.log(`Delaying command response by ${COMMAND_RESPONSE_DELAY_MS}ms for:`, body.split(/\s+/)[0]);
-  await delay(COMMAND_RESPONSE_DELAY_MS);
+if (body.startsWith(".")) {
+  const commandName = body.split(/\s+/)[0];
+  const now = Date.now();
+  const lastCommandAt = userCommandCooldown.get(sender);
+
+  if (lastCommandAt && now - lastCommandAt < USER_COMMAND_COOLDOWN_MS) {
+    const remainingSeconds = Math.ceil((USER_COMMAND_COOLDOWN_MS - (now - lastCommandAt)) / 1000);
+    const waitMs = randomCommandDelayMs();
+    console.log(`Cooldown hit for ${sender}; delaying ${waitMs}ms before notice.`);
+    await delay(waitMs);
+    return sock.sendMessage(chatId, {
+      text: `⏳ Please wait ${remainingSeconds}s before sending another command.`
+    }, { quoted: msg });
+  }
+
+  userCommandCooldown.set(sender, now);
+
+  const waitMs = randomCommandDelayMs();
+  if (waitMs > 0) {
+    console.log(`Delaying command response by ${waitMs}ms for:`, commandName);
+    await delay(waitMs);
+  }
 }
    
     // ===== .ping =====
