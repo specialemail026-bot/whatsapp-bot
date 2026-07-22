@@ -25,6 +25,11 @@ import { join } from "path";
 import qrcode from "qrcode-terminal";
 
 const blockedCountryCodes = ["234", "91", "62"]; // Nigeria, India, Indonesia
+const COMMAND_RESPONSE_DELAY_MS = Number(process.env.COMMAND_RESPONSE_DELAY_MS || 20000);
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 /* ===========================
    GLOBAL CRASH PROTECTION
@@ -256,6 +261,11 @@ if (greetings.some(g => normalized.startsWith(g))) {
   }, { quoted: msg });
 
   return;
+}
+
+if (body.startsWith(".") && COMMAND_RESPONSE_DELAY_MS > 0) {
+  console.log(`Delaying command response by ${COMMAND_RESPONSE_DELAY_MS}ms for:`, body.split(/\s+/)[0]);
+  await delay(COMMAND_RESPONSE_DELAY_MS);
 }
    
     // ===== .ping =====
