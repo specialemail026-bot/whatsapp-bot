@@ -6,6 +6,7 @@ import axios from 'axios';
 // Import from your package.json
 import { path as ffmpegPath } from '@ffmpeg-installer/ffmpeg'; 
 import { checkLimitOrPremium } from "./premium.js";
+import { queueYouTubeDownload, retryTransient } from "./youtubeDownloadQueue.js";
 
 const TMP_DIR = "tmp";
 const MIN_AUDIO_BYTES = 1024;
@@ -119,20 +120,25 @@ export default {
       await sock.sendMessage(from, {  text: `⏳ Downloading: *${video.title}*\n⏱️ Duration: ${video.duration?.timestamp || 'Unknown'}\n👀 Views: ${video.views?.toLocaleString() || 'Unknown'}` }, { quoted: msg });
 
       let audioBuffer;
-      const outputBase = path.join(TMP_DIR, `${Date.now()}-${safeFileName(video.title)}`);
+      const outputBase = path.join(TMP_DIR, `${Date.now()}-${process.pid}-${Math.random().toString(36).slice(2, 8)}-${safeFileName(video.title)}`);
       const inputPath = `${outputBase}-input`;
       const outputTemplate = `${outputBase}.%(ext)s`;
       const outputPath = `${outputBase}.mp3`;
       try {
-        try {
-          await downloadAudioWithApi(video.url, inputPath);
-          await convertToMp3(inputPath, outputPath);
-        } catch (apiError) {
-          console.error("SONG API download failed, trying yt-dlp fallback:", apiError?.code || apiError?.message || apiError);
-          if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
-          if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
-          await downloadAudioFile(video.url, outputTemplate, outputPath);
-        }
+        await queueYouTubeDownload(async () => {
+          try {
+            await retryTransient(() => downloadAudioWithApi(video.url, inputPath), "SONG API");
+            await convertToMp3(inputPath, outputPath);
+          } catch (apiError) {
+            console.error("SONG API download failed, trying yt-dlp fallback:", apiError?.code || apiError?.message || apiError);
+            if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+            if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+            await retryTransient(
+              () => downloadAudioFile(video.url, outputTemplate, outputPath),
+              "SONG yt-dlp"
+            );
+          }
+        });
         audioBuffer = fs.readFileSync(outputPath);
       } finally {
         if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
@@ -161,7 +167,12 @@ export default {
 
     } catch (error) {
       console.error("Critical song Error:", error);
-      await sock.sendMessage(from, { text: "❌Download failed. Try again." }, { quoted: msg });
+      const errorText = String(error?.message || error);
+      const blockedByYouTube = /not a bot/i.test(errorText);
+      const replyText = blockedByYouTube
+        ? "YouTube is blocking downloads from the bot server right now. Please try again later or use another source."
+        : "The song download failed. Please try again later.";
+      await sock.sendMessage(from, { text: replyText }, { quoted: msg });
     }
   },
 };

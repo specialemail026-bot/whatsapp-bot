@@ -4,6 +4,7 @@ import path from "path";
 import { spawn } from "child_process";
 import ffmpegPath from "ffmpeg-static";
 import { checkLimitOrPremium } from "./premium.js";
+import { queueYouTubeDownload, retryTransient } from "./youtubeDownloadQueue.js";
 
 // ===== simple in-memory locks =====
 const activeChats = new Set();
@@ -106,6 +107,7 @@ async function execute(sock, msg, args) {
 
   activeChats.add(chatId);
 
+  let requestId;
   try {
     const text =
       msg.message?.conversation ||
@@ -136,8 +138,9 @@ async function execute(sock, msg, args) {
 
     const video = searchResponse.data.answer.videos[0];
     const safeTitle = video.title.replace(/[^\w\s.-]/g, "");
-    const inputPath = path.join(TMP_DIR, `${Date.now()}-input`);
-    const outputPath = path.join(TMP_DIR, `${Date.now()}-${safeTitle}.mp3`);
+    requestId = `${Date.now()}-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
+    const inputPath = path.join(TMP_DIR, `${requestId}-input`);
+    const outputPath = path.join(TMP_DIR, `${requestId}-${safeTitle}.mp3`);
 
     await sock.sendMessage(
       chatId,
@@ -145,15 +148,20 @@ async function execute(sock, msg, args) {
       { quoted: msg }
     );
 
-    try {
-      await downloadAudioWithApi(video.url, inputPath);
-      await convertToMp3(inputPath, outputPath);
-    } catch (apiErr) {
-      console.error("PLAY API download failed, trying yt-dlp fallback:", apiErr?.code || apiErr?.message || apiErr);
-      if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
-      if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
-      await downloadAudioWithYtDlp(video.url, outputPath);
-    }
+    await queueYouTubeDownload(async () => {
+      try {
+        await retryTransient(() => downloadAudioWithApi(video.url, inputPath), "PLAY API");
+        await convertToMp3(inputPath, outputPath);
+      } catch (apiErr) {
+        console.error("PLAY API download failed, trying yt-dlp fallback:", apiErr?.code || apiErr?.message || apiErr);
+        if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+        if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+        await retryTransient(
+          () => downloadAudioWithYtDlp(video.url, outputPath),
+          "PLAY yt-dlp"
+        );
+      }
+    });
 
     const audioBuffer = fs.readFileSync(outputPath);
 
@@ -174,25 +182,26 @@ async function execute(sock, msg, args) {
 
   } catch (err) {
     console.error("PLAY ERROR:", err);
-    // Best-effort cleanup after failed conversion/download.
+    // Clean only this request's files so concurrent downloads are untouched.
     try {
-      const files = fs.readdirSync(TMP_DIR);
-      const now = Date.now();
-      for (const name of files) {
-        if (!name.includes("-")) continue;
-        const maybeTs = Number(name.split("-")[0]);
-        if (Number.isFinite(maybeTs) && now - maybeTs < 10 * 60 * 1000) {
-          fs.unlinkSync(path.join(TMP_DIR, name));
+      if (requestId) {
+        const failedFilePrefix = `${requestId}-`;
+        for (const name of fs.readdirSync(TMP_DIR)) {
+          if (name.startsWith(failedFilePrefix)) fs.unlinkSync(path.join(TMP_DIR, name));
         }
       }
-    } catch {}
+    } catch (cleanupErr) {
+      console.error("PLAY cleanup error:", cleanupErr?.message || cleanupErr);
+    }
     activeChats.delete(chatId);
 
-    await sock.sendMessage(
-      chatId,
-      { text: "❌ Try again please." },
-      { quoted: msg }
-    );
+    const errorText = String(err?.message || err);
+    const blockedByYouTube = /not a bot/i.test(errorText);
+    const replyText = blockedByYouTube
+      ? "YouTube is blocking downloads from the bot server right now. Please try again later or use another source."
+      : "The song download failed. Please try again later.";
+
+    await sock.sendMessage(chatId, { text: replyText }, { quoted: msg });
   }
 }
 
