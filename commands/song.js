@@ -7,6 +7,7 @@ import axios from 'axios';
 import { path as ffmpegPath } from '@ffmpeg-installer/ffmpeg'; 
 import { checkLimitOrPremium } from "./premium.js";
 import { queueYouTubeDownload, retryTransient } from "./youtubeDownloadQueue.js";
+import { withYtDlpCookies } from "./ytDlpCookies.js";
 
 const TMP_DIR = "tmp";
 const MIN_AUDIO_BYTES = 1024;
@@ -63,18 +64,20 @@ async function downloadAudioWithApi(videoUrl, inputPath) {
 }
 
 async function downloadAudioFile(videoUrl, outputTemplate, finalPath) {
-  await new Promise((resolve, reject) => {
-    const ytdlp = spawn('yt-dlp', [
-      '-x',
-      '--audio-format', 'mp3',
-      '--audio-quality', '0',
-      '--ffmpeg-location', ffmpegPath,
-      '--no-playlist',
-      '--quiet',
-      '--no-warnings',
-      '-o', outputTemplate,
-      videoUrl
-    ]);
+  const args = [
+    '-x',
+    '--audio-format', 'mp3',
+    '--audio-quality', '0',
+    '--ffmpeg-location', ffmpegPath,
+    '--no-playlist',
+    '--quiet',
+    '--no-warnings',
+    '-o', outputTemplate,
+    videoUrl
+  ];
+
+  await withYtDlpCookies(args, () => new Promise((resolve, reject) => {
+    const ytdlp = spawn('yt-dlp', args);
 
     const timer = setTimeout(() => {
       ytdlp.kill("SIGKILL");
@@ -94,7 +97,7 @@ async function downloadAudioFile(videoUrl, outputTemplate, finalPath) {
       if (code === 0 && fs.existsSync(finalPath)) return resolve();
       reject(new Error(`yt-dlp file download failed (${code}): ${stderr}`));
     });
-  });
+  }));
 }
 
 export default {

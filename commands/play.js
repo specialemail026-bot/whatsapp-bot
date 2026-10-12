@@ -5,6 +5,7 @@ import { spawn } from "child_process";
 import ffmpegPath from "ffmpeg-static";
 import { checkLimitOrPremium } from "./premium.js";
 import { queueYouTubeDownload, retryTransient } from "./youtubeDownloadQueue.js";
+import { withYtDlpCookies } from "./ytDlpCookies.js";
 
 // ===== simple in-memory locks =====
 const activeChats = new Set();
@@ -68,17 +69,9 @@ async function downloadAudioWithYtDlp(videoUrl, outputPath) {
     "--no-warnings",
     "-o", outputPath
   ];
-  const cookiesFile = process.env.YTDLP_COOKIES_FILE?.trim();
-  if (cookiesFile) {
-    const resolvedCookiesFile = path.resolve(cookiesFile);
-    if (!fs.existsSync(resolvedCookiesFile) || !fs.statSync(resolvedCookiesFile).isFile()) {
-      throw new Error("YTDLP_COOKIES_FILE must point to an existing cookie file.");
-    }
-    args.push("--cookies", resolvedCookiesFile);
-  }
   args.push(videoUrl);
 
-  await new Promise((resolve, reject) => {
+  await withYtDlpCookies(args, () => new Promise((resolve, reject) => {
     const ytdlp = spawn("yt-dlp", args);
 
     let stderr = "";
@@ -90,7 +83,7 @@ async function downloadAudioWithYtDlp(videoUrl, outputPath) {
       if (code === 0 && fs.existsSync(outputPath)) return resolve();
       reject(new Error(`yt-dlp audio failed (${code}): ${stderr}`));
     });
-  });
+  }));
 }
 
 async function execute(sock, msg, args) {
