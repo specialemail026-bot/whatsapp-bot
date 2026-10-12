@@ -58,18 +58,28 @@ async function downloadAudioWithApi(videoUrl, inputPath) {
 }
 
 async function downloadAudioWithYtDlp(videoUrl, outputPath) {
+  const args = [
+    "-x",
+    "--audio-format", "mp3",
+    "--audio-quality", "0",
+    "--ffmpeg-location", ffmpegPath,
+    "--no-playlist",
+    "--quiet",
+    "--no-warnings",
+    "-o", outputPath
+  ];
+  const cookiesFile = process.env.YTDLP_COOKIES_FILE?.trim();
+  if (cookiesFile) {
+    const resolvedCookiesFile = path.resolve(cookiesFile);
+    if (!fs.existsSync(resolvedCookiesFile) || !fs.statSync(resolvedCookiesFile).isFile()) {
+      throw new Error("YTDLP_COOKIES_FILE must point to an existing cookie file.");
+    }
+    args.push("--cookies", resolvedCookiesFile);
+  }
+  args.push(videoUrl);
+
   await new Promise((resolve, reject) => {
-    const ytdlp = spawn("yt-dlp", [
-      "-x",
-      "--audio-format", "mp3",
-      "--audio-quality", "0",
-      "--ffmpeg-location", ffmpegPath,
-      "--no-playlist",
-      "--quiet",
-      "--no-warnings",
-      "-o", outputPath,
-      videoUrl
-    ]);
+    const ytdlp = spawn("yt-dlp", args);
 
     let stderr = "";
     ytdlp.stderr.on("data", (data) => {
@@ -196,9 +206,9 @@ async function execute(sock, msg, args) {
     activeChats.delete(chatId);
 
     const errorText = String(err?.message || err);
-    const blockedByYouTube = /not a bot/i.test(errorText);
+    const blockedByYouTube = /not a bot|sign in to confirm/i.test(errorText);
     const replyText = blockedByYouTube
-      ? "YouTube is blocking downloads from the bot server right now. Please try again later or use another source."
+      ? "YouTube is blocking requests from the bot server. The operator needs to configure a valid yt-dlp cookies file (YTDLP_COOKIES_FILE). Please try again later."
       : "The song download failed. Please try again later.";
 
     await sock.sendMessage(chatId, { text: replyText }, { quoted: msg });

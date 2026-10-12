@@ -108,6 +108,7 @@ const DATA_DIR = process.env.DATA_DIR || (fs.existsSync("/data") ? "/data" : pat
 - **Local**: `npm start` — prints QR on first run for Baileys auth; credentials saved to `data/auth_info/`.
 - **Docker**: `docker build -t whatsapp-bot .` bundles `yt-dlp`, `ffmpeg`, Python. Use when host lacks binaries.
 - **Railway/Cloud**: Set `DATA_DIR=/data` (or use default fallback). Mount volume at `/data` for persistence.
+- **YouTube downloads**: If YouTube requires sign-in, provide a valid Netscape-format cookies file and set `YTDLP_COOKIES_FILE` to its path. Mount it as a deployment secret/read-only file; never commit or log the cookies. Cookies can expire and should be rotated securely.
 - **Logging**: Pino logger set to silent; global crash handlers at top of `index.js` catch `uncaughtException` and `unhandledRejection` to prevent bot shutdown.
 - **Per-command try/catch**: Always wrap download work in `try/catch` and reply with error message; finally block cleans temp files. Index.js has global handler as fallback.
 
