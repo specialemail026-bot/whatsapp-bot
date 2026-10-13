@@ -71,6 +71,7 @@ async function downloadAudioFile(videoUrl, outputTemplate, finalPath) {
     '--audio-quality', '0',
     '--ffmpeg-location', ffmpegPath,
     '--no-playlist',
+    '--js-runtimes', 'node',
     '--quiet',
     '-o', outputTemplate,
     videoUrl

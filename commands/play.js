@@ -66,6 +66,7 @@ async function downloadAudioWithYtDlp(videoUrl, outputPath) {
     "--audio-quality", "0",
     "--ffmpeg-location", ffmpegPath,
     "--no-playlist",
+    "--js-runtimes", "node",
     "--quiet",
     "-o", outputPath
   ];

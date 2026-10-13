@@ -1,4 +1,4 @@
-FROM node:20-slim
+FROM node:22-slim
 
 # Install system deps
 RUN apt-get update && apt-get install -y \
@@ -14,6 +14,7 @@ ARG YT_DLP_VERSION=2026.10.10.233141
 RUN curl -fL "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/download/${YT_DLP_VERSION}/yt-dlp" \
     -o /usr/local/bin/yt-dlp \
     && chmod +x /usr/local/bin/yt-dlp \
+    && node --version \
     && yt-dlp --version
 
 WORKDIR /app
