@@ -61,12 +61,12 @@ async function downloadAudioWithApi(videoUrl, inputPath) {
 async function downloadAudioWithYtDlp(videoUrl, outputPath) {
   const args = [
     "-x",
+    "-f", "bestaudio/best",
     "--audio-format", "mp3",
     "--audio-quality", "0",
     "--ffmpeg-location", ffmpegPath,
     "--no-playlist",
     "--quiet",
-    "--no-warnings",
     "-o", outputPath
   ];
   args.push(videoUrl);
@@ -200,9 +200,12 @@ async function execute(sock, msg, args) {
 
     const errorText = String(err?.message || err);
     const blockedByYouTube = /not a bot|sign in to confirm/i.test(errorText);
+    const noAvailableFormat = /requested format is not available/i.test(errorText);
     const replyText = blockedByYouTube
-      ? "YouTube is blocking requests from the bot server. The operator needs to configure a valid yt-dlp cookies file (YTDLP_COOKIES_FILE). Please try again later."
-      : "The song download failed. Please try again later.";
+      ? "YouTube is blocking requests from the bot server. The operator needs to configure valid yt-dlp cookies (YTDLP_COOKIES_BASE64 or YTDLP_COOKIES_FILE). Please try again later."
+      : noAvailableFormat
+        ? "YouTube did not provide a downloadable audio format for that song. Please try another song or try again later."
+        : "The song download failed. Please try again later.";
 
     await sock.sendMessage(chatId, { text: replyText }, { quoted: msg });
   }

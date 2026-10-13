@@ -66,12 +66,12 @@ async function downloadAudioWithApi(videoUrl, inputPath) {
 async function downloadAudioFile(videoUrl, outputTemplate, finalPath) {
   const args = [
     '-x',
+    '-f', 'bestaudio/best',
     '--audio-format', 'mp3',
     '--audio-quality', '0',
     '--ffmpeg-location', ffmpegPath,
     '--no-playlist',
     '--quiet',
-    '--no-warnings',
     '-o', outputTemplate,
     videoUrl
   ];
@@ -173,10 +173,13 @@ export default {
       const errorText = String(error?.message || error);
       const blockedByYouTube = /not a bot|sign in to confirm/i.test(errorText);
       const reloadRequested = /page needs to be reloaded/i.test(errorText);
+      const noAvailableFormat = /requested format is not available/i.test(errorText);
       const replyText = blockedByYouTube
         ? "YouTube is blocking downloads from the bot server right now. Please try again later or use another source."
         : reloadRequested
           ? "YouTube interrupted the download. Please try again shortly. If it keeps happening, YouTube may be rejecting the bot server or its login session."
+          : noAvailableFormat
+            ? "YouTube did not provide a downloadable audio format for that song. Please try another song or try again later."
           : "The song download failed. Please try again later.";
       await sock.sendMessage(from, { text: replyText }, { quoted: msg });
     }
