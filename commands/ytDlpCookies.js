@@ -4,7 +4,7 @@ import path from "path";
 
 export async function withYtDlpCookies(args, operation) {
   const cookiesFile = process.env.YTDLP_COOKIES_FILE?.trim();
-  const encodedCookies = process.env.YTDLP_COOKIES_BASE64?.trim();
+  const encodedCookies = process.env.YTDLP_COOKIES_BASE64?.replace(/\s/g, "");
 
   if (cookiesFile && encodedCookies) {
     throw new Error("Set only one of YTDLP_COOKIES_FILE or YTDLP_COOKIES_BASE64.");
@@ -22,7 +22,9 @@ export async function withYtDlpCookies(args, operation) {
   if (!encodedCookies) return operation();
 
   if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encodedCookies)) {
-    throw new Error("YTDLP_COOKIES_BASE64 must contain valid Base64-encoded cookie data.");
+    throw new Error(
+      "YTDLP_COOKIES_BASE64 is not valid Base64. Set its value to only the complete Base64 output from encoding the cookies file; do not include the filename, quotes, or variable name."
+    );
   }
 
   const cookies = Buffer.from(encodedCookies, "base64");
