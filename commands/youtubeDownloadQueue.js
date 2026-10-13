@@ -21,7 +21,7 @@ function isTransient(error) {
     return true;
   }
 
-  return /timed out|socket hang up|network error|http error (?:429|5\d\d)/i.test(String(error?.message || error));
+  return /timed out|socket hang up|network error|http error (?:429|5\d\d)|page needs to be reloaded/i.test(String(error?.message || error));
 }
 
 export async function retryTransient(operation, label, attempts = MAX_ATTEMPTS) {

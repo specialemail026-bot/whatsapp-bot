@@ -171,10 +171,13 @@ export default {
     } catch (error) {
       console.error("Critical song Error:", error);
       const errorText = String(error?.message || error);
-      const blockedByYouTube = /not a bot/i.test(errorText);
+      const blockedByYouTube = /not a bot|sign in to confirm/i.test(errorText);
+      const reloadRequested = /page needs to be reloaded/i.test(errorText);
       const replyText = blockedByYouTube
         ? "YouTube is blocking downloads from the bot server right now. Please try again later or use another source."
-        : "The song download failed. Please try again later.";
+        : reloadRequested
+          ? "YouTube interrupted the download. Please try again shortly. If it keeps happening, YouTube may be rejecting the bot server or its login session."
+          : "The song download failed. Please try again later.";
       await sock.sendMessage(from, { text: replyText }, { quoted: msg });
     }
   },

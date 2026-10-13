@@ -106,7 +106,7 @@ const DATA_DIR = process.env.DATA_DIR || (fs.existsSync("/data") ? "/data" : pat
 ## Running & Deployment
 
 - **Local**: `npm start` — prints QR on first run for Baileys auth; credentials saved to `data/auth_info/`.
-- **Docker**: `docker build -t whatsapp-bot .` bundles `yt-dlp`, `ffmpeg`, Python. Use when host lacks binaries.
+- **Docker**: `docker build -t whatsapp-bot .` bundles `yt-dlp` nightly, `ffmpeg`, Python. Update the pinned `YT_DLP_VERSION` in `Dockerfile` when YouTube extraction breaks.
 - **Railway/Cloud**: Set `DATA_DIR=/data` (or use default fallback). Mount volume at `/data` for persistence.
 - **YouTube downloads**: If YouTube requires sign-in, either set `YTDLP_COOKIES_FILE` to a mounted Netscape-format cookie file or set `YTDLP_COOKIES_BASE64` to its Base64-encoded contents as a deployment secret. The bot writes the latter to a private temporary file for yt-dlp and removes it afterward. Never commit or log cookies; they are account credentials and may expire.
 - **Logging**: Pino logger set to silent; global crash handlers at top of `index.js` catch `uncaughtException` and `unhandledRejection` to prevent bot shutdown.
